@@ -101,6 +101,25 @@ public class HybridAesNitroSpec_cxx {
 
   // Methods
   @inline(__always)
+  public final func pbkdf2(password: std.string, salt: std.string, cost: Double, length: Double) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
+    do {
+      let __result = try self.__implementation.pbkdf2(password: String(password), salt: String(salt), cost: cost, length: length)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__string__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__string__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__string__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(std.string(__result)) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__string___(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_std__string___(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func encrypt(text: std.string, key: std.string, iv: std.string, algorithm: Int32) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
     do {
       let __result = try self.__implementation.encrypt(text: String(text), key: String(key), iv: String(iv), algorithm: margelo.nitro.NitroAes.Algorithms(rawValue: algorithm)!)
@@ -139,9 +158,9 @@ public class HybridAesNitroSpec_cxx {
   }
   
   @inline(__always)
-  public final func encryptFile(key: std.string, iv: std.string, inputPath: std.string, outputPath: std.string) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
+  public final func encryptFile(key: std.string, iv: std.string, hmacKey: std.string, inputPath: std.string, outputPath: std.string) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
     do {
-      let __result = try self.__implementation.encryptFile(key: String(key), iv: String(iv), inputPath: String(inputPath), outputPath: String(outputPath))
+      let __result = try self.__implementation.encryptFile(key: String(key), iv: String(iv), hmacKey: String(hmacKey), inputPath: String(inputPath), outputPath: String(outputPath))
       let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__string__ in
         let __promise = bridge.create_std__shared_ptr_Promise_std__string__()
         let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__string__(__promise)

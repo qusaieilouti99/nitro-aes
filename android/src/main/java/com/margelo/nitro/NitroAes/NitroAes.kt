@@ -14,7 +14,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Implementation of the Nitro AES module.
+ * Implementation of the Nitro AES module with PBKDF2 and HMAC-key support.
  */
 class NitroAes : HybridAesNitroSpec() {
   companion object {
@@ -27,38 +27,42 @@ class NitroAes : HybridAesNitroSpec() {
     private const val CHUNK_SIZE = BLOCK_SIZE * 4 * 1024
   }
 
-  // Text encrypt/decrypt
-  override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> = Promise { resolve, reject ->
+  override fun pbkdf2(password: String, salt: String, cost: Double, length: Double): Promise<String> = Promise { resolve, reject ->
     try {
-      val encrypted = encryptText(text, key, iv)
-      resolve(encrypted)
-    } catch (e: Throwable) {
+      // PBKDF2 with SHA-512
+      val dk = PKCS5S2ParametersGenerator(SHA512Digest()).apply {
+        init(password.toByteArray(StandardCharsets.UTF_8), salt.toByteArray(StandardCharsets.UTF_8), cost.toInt())
+      }
+      val key = (dk.generateDerivedParameters(length.toInt() * 8) as KeyParameter).key
+      resolve(bytesToHex(key))
+    } catch (e: Exception) {
       reject(e)
     }
+  }
+
+  override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> = Promise { resolve, reject ->
+    try { resolve(encryptText(text, key, iv)) } catch (e: Throwable) { reject(e) }
   }
 
   override fun decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms): Promise<String> = Promise { resolve, reject ->
+    try { resolve(decryptText(ciphertext, key, iv)) } catch (e: Throwable) { reject(e) }
+  }
+
+  override fun encryptFile(
+    key: String,
+    iv: String,
+    hmacKey: String,
+    inputPath: String,
+    outputPath: String
+  ): Promise<String> = Promise { resolve, reject ->
     try {
-      val decrypted = decryptText(ciphertext, key, iv)
-      resolve(decrypted)
+      val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
+      resolve("{\"auth\":\"$auth\",\"paddingSize\":$padding}")
     } catch (e: Throwable) {
       reject(e)
     }
   }
 
-  // File encrypt: returns JSON string { auth: string, paddingSize: number }
-  override fun encryptFile(key: String, iv: String, inputPath: String, outputPath: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      // Use same key for HMAC
-      val (auth, padding) = doEncryptFile(key, iv, key, inputPath, outputPath)
-      val json = "{\"auth\":\"$auth\",\"paddingSize\":$padding}"
-      resolve(json)
-    } catch (e: Throwable) {
-      reject(e)
-    }
-  }
-
-  // File decrypt
   override fun decryptFile(
     key: String,
     iv: String,
@@ -76,47 +80,45 @@ class NitroAes : HybridAesNitroSpec() {
     }
   }
 
-  // HMAC & hashing
   override fun hmac256(ciphertext: String, key: String): Promise<String> = Promise { res, rej ->
-    try { res(hmac(ciphertext, key, HMAC_SHA256)) } catch(e: Throwable) { rej(e) }
+    try { res(hmac(ciphertext, key, HMAC_SHA256)) } catch (e: Throwable) { rej(e) }
   }
+
   override fun hmac512(ciphertext: String, key: String): Promise<String> = Promise { res, rej ->
-    try { res(hmac(ciphertext, key, "HmacSHA512")) } catch(e: Throwable) { rej(e) }
-  }
-  override fun sha1(text: String): Promise<String> = Promise { res, rej ->
-    try { res(sha(text, "SHA-1")) } catch(e: Throwable) { rej(e) }
-  }
-  override fun sha256(text: String): Promise<String> = Promise { res, rej ->
-    try { res(sha(text, "SHA-256")) } catch(e: Throwable) { rej(e) }
-  }
-  override fun sha512(text: String): Promise<String> = Promise { res, rej ->
-    try { res(sha(text, "SHA-512")) } catch(e: Throwable) { rej(e) }
+    try { res(hmac(ciphertext, key, "HmacSHA512")) } catch (e: Throwable) { rej(e) }
   }
 
-  // Random key
   override fun randomKey(length: Double): Promise<String> = Promise { res, rej ->
-    try { res(generateRandomKey(length.toInt())) } catch(e: Throwable) { rej(e) }
+    try { res(generateRandomKey(length.toInt())) } catch (e: Throwable) { rej(e) }
   }
 
-  // Private utilities
-  private fun hexToBytes(hex: String): ByteArray =
-    hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+  override fun sha1(text: String): Promise<String> = Promise { res, rej ->
+    try { res(sha(text, "SHA-1")) } catch (e: Throwable) { rej(e) }
+  }
 
-  private fun bytesToHex(bytes: ByteArray): String =
-    bytes.joinToString("") { "%02x".format(it) }
+  override fun sha256(text: String): Promise<String> = Promise { res, rej ->
+    try { res(sha(text, "SHA-256")) } catch (e: Throwable) { rej(e) }
+  }
+
+  override fun sha512(text: String): Promise<String> = Promise { res, rej ->
+    try { res(sha(text, "SHA-512")) } catch (e: Throwable) { rej(e) }
+  }
+
+  // --- Utilities ---
+  private fun hexToBytes(hex: String): ByteArray = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+  private fun bytesToHex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
   private fun encryptText(text: String, keyHex: String, ivHex: String): String {
     val key = hexToBytes(keyHex)
-    val iv  = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
+    val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
-    val out = cipher.doFinal(text.toByteArray(StandardCharsets.UTF_8))
-    return Base64.encodeToString(out, Base64.NO_WRAP)
+    return Base64.encodeToString(cipher.doFinal(text.toByteArray(StandardCharsets.UTF_8)), Base64.NO_WRAP)
   }
 
   private fun decryptText(cipher: String, keyHex: String, ivHex: String): String {
     val key = hexToBytes(keyHex)
-    val iv  = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
+    val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
     val data = Base64.decode(cipher, Base64.NO_WRAP)
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
@@ -124,17 +126,12 @@ class NitroAes : HybridAesNitroSpec() {
   }
 
   private fun hmac(text: String, keyHex: String, alg: String): String {
-    val key = hexToBytes(keyHex)
-    val mac = Mac.getInstance(alg).apply { init(SecretKeySpec(key, alg)) }
-    val out = mac.doFinal(text.toByteArray(StandardCharsets.UTF_8))
-    return bytesToHex(out)
+    val mac = Mac.getInstance(alg)
+    mac.init(SecretKeySpec(hexToBytes(keyHex), alg))
+    return bytesToHex(mac.doFinal(text.toByteArray(StandardCharsets.UTF_8)))
   }
 
-  private fun sha(text: String, alg: String): String {
-    val md = MessageDigest.getInstance(alg)
-    val digest = md.digest(text.toByteArray(StandardCharsets.UTF_8))
-    return bytesToHex(digest)
-  }
+  private fun sha(text: String, algorithm: String): String = bytesToHex(MessageDigest.getInstance(algorithm).digest(text.toByteArray(StandardCharsets.UTF_8)))
 
   private fun generateRandomKey(len: Int): String {
     val b = ByteArray(len)
@@ -149,48 +146,38 @@ class NitroAes : HybridAesNitroSpec() {
     inputPath: String,
     outputPath: String
   ): Pair<String, Int> {
-    // Adapted from your Java implementation:
     val key = hexToBytes(keyHex)
-    val hmacKey = hexToBytes(hmacHex)
     val iv = hexToBytes(ivHex)
-
+    val hmacKey = hexToBytes(hmacHex)
     val secretKey = SecretKeySpec(key, KEY_ALGORITHM)
     val macKey = SecretKeySpec(hmacKey, HMAC_SHA256)
-    val cipher = Cipher.getInstance(FILE_CIPHER).apply {
-      init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv))
-    }
+    val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv)) }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-
-    FileOutputStream(File(outputPath)).use { outputStream ->
-      FileInputStream(File(inputPath)).use { inputStream ->
-        val file = File(inputPath)
-        val fileSize = file.length()
-        val paddingSize = if (fileSize % BLOCK_SIZE == 0L) 0 else (BLOCK_SIZE - (fileSize % BLOCK_SIZE)).toInt()
+    FileInputStream(File(inputPath)).use { input ->
+      FileOutputStream(File(outputPath)).use { output ->
+        val size = File(inputPath).length()
+        val padding = if (size % BLOCK_SIZE == 0L) 0 else (BLOCK_SIZE - (size % BLOCK_SIZE)).toInt()
         val buffer = ByteArray(CHUNK_SIZE)
-        val chunks = Math.ceil(fileSize.toDouble() / CHUNK_SIZE).toInt()
-
+        val chunks = Math.ceil(size.toDouble() / CHUNK_SIZE).toInt()
         for (i in 0 until chunks) {
-          var read = inputStream.read(buffer)
-          if (i == chunks -1 && paddingSize > 0) {
-            for (j in read until read + paddingSize) buffer[j] = paddingSize.toByte()
-            read += paddingSize
+          var read = input.read(buffer)
+          if (i == chunks -1 && padding > 0) {
+            for (j in read until read + padding) buffer[j] = padding.toByte()
+            read += padding
           }
           val enc = cipher.update(buffer, 0, read)
-          mac.update(enc)
-          digest.update(enc)
-          outputStream.write(enc)
+          mac.update(enc); digest.update(enc)
+          output.write(enc)
         }
-        val finalEnc = cipher.doFinal()
-        digest.update(finalEnc)
-        mac.update(finalEnc)
-        outputStream.write(finalEnc)
+        val final = cipher.doFinal()
+        mac.update(final); digest.update(final)
+        output.write(final)
         val hmac = mac.doFinal()
         digest.update(hmac)
-        outputStream.write(hmac)
-
+        output.write(hmac)
         val auth = bytesToHex(digest.digest())
-        return Pair(auth, paddingSize)
+        return Pair(auth, padding)
       }
     }
   }
@@ -204,49 +191,37 @@ class NitroAes : HybridAesNitroSpec() {
     outputPath: String,
     paddingSize: Int
   ) {
-    // Adapted from your Java implementation:
     val key = hexToBytes(keyHex)
-    val hmacKey = hexToBytes(hmacHex)
     val iv = hexToBytes(ivHex)
-
+    val hmacKey = hexToBytes(hmacHex)
     val secretKey = SecretKeySpec(key, KEY_ALGORITHM)
     val macKey = SecretKeySpec(hmacKey, HMAC_SHA256)
-    val cipher = Cipher.getInstance(FILE_CIPHER).apply {
-      init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
-    }
+    val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv)) }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-
-    FileOutputStream(File(outputPath)).use { outputStream ->
-      FileInputStream(File(inputPath)).use { inputStream ->
-        val fileSize = File(inputPath).length()
+    FileInputStream(File(inputPath)).use { input ->
+      FileOutputStream(File(outputPath)).use { output ->
+        val size = File(inputPath).length()
         val macLen = mac.macLength
-        val encSize = fileSize - macLen
+        val encLen = size - macLen
         val buffer = ByteArray(CHUNK_SIZE)
-        var remaining = encSize
+        var rem = encLen.toInt()
 
-        while (remaining > 0) {
-          val toRead = minOf(buffer.size, remaining.toInt())
-          val read = inputStream.read(buffer, 0, toRead)
-          mac.update(buffer, 0, read)
-          digest.update(buffer, 0, read)
+        while (rem > 0) {
+          val toRead = minOf(rem, CHUNK_SIZE)
+          val read = input.read(buffer, 0, toRead)
+          mac.update(buffer, 0, read); digest.update(buffer, 0, read)
           val dec = cipher.update(buffer, 0, read)
-          if (remaining <= CHUNK_SIZE) {
-            // last
-            outputStream.write(dec, 0, dec.size - paddingSize)
-          } else {
-            outputStream.write(dec)
-          }
-          remaining -= read
+          if (rem <= CHUNK_SIZE) output.write(dec, 0, dec.size - paddingSize) else output.write(dec)
+          rem -= read
         }
         val ourHmac = mac.doFinal()
-        val theirHmac = ByteArray(macLen).also { inputStream.read(it) }
-        if (!MessageDigest.isEqual(ourHmac, theirHmac)) throw Exception("HMAC mismatch")
+        val theirHmac = ByteArray(macLen).also { input.read(it) }
+        require(ourHmac.contentEquals(theirHmac)) { "HMAC mismatch" }
         digest.update(theirHmac)
-        val ourAuth = bytesToHex(digest.digest())
-        if (ourAuth != theirAuth) throw Exception("Auth mismatch")
-        val finalDec = cipher.doFinal()
-        if (finalDec.isNotEmpty()) outputStream.write(finalDec)
+        require(bytesToHex(digest.digest()) == theirAuth) { "Auth mismatch" }
+        val final = cipher.doFinal()
+        if (final.isNotEmpty()) output.write(final)
       }
     }
   }

@@ -37,6 +37,22 @@ namespace margelo::nitro::NitroAes {
   
 
   // Methods
+  std::shared_ptr<Promise<std::string>> JHybridAesNitroSpec::pbkdf2(const std::string& password, const std::string& salt, double cost, double length) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* password */, jni::alias_ref<jni::JString> /* salt */, double /* cost */, double /* length */)>("pbkdf2");
+    auto __result = method(_javaPart, jni::make_jstring(password), jni::make_jstring(salt), cost, length);
+    return [&]() {
+      auto __promise = Promise<std::string>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JString>(__boxedResult);
+        __promise->resolve(__result->toStdString());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
   std::shared_ptr<Promise<std::string>> JHybridAesNitroSpec::encrypt(const std::string& text, const std::string& key, const std::string& iv, Algorithms algorithm) {
     static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* text */, jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* iv */, jni::alias_ref<JAlgorithms> /* algorithm */)>("encrypt");
     auto __result = method(_javaPart, jni::make_jstring(text), jni::make_jstring(key), jni::make_jstring(iv), JAlgorithms::fromCpp(algorithm));
@@ -69,9 +85,9 @@ namespace margelo::nitro::NitroAes {
       return __promise;
     }();
   }
-  std::shared_ptr<Promise<std::string>> JHybridAesNitroSpec::encryptFile(const std::string& key, const std::string& iv, const std::string& inputPath, const std::string& outputPath) {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* iv */, jni::alias_ref<jni::JString> /* inputPath */, jni::alias_ref<jni::JString> /* outputPath */)>("encryptFile");
-    auto __result = method(_javaPart, jni::make_jstring(key), jni::make_jstring(iv), jni::make_jstring(inputPath), jni::make_jstring(outputPath));
+  std::shared_ptr<Promise<std::string>> JHybridAesNitroSpec::encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* iv */, jni::alias_ref<jni::JString> /* hmacKey */, jni::alias_ref<jni::JString> /* inputPath */, jni::alias_ref<jni::JString> /* outputPath */)>("encryptFile");
+    auto __result = method(_javaPart, jni::make_jstring(key), jni::make_jstring(iv), jni::make_jstring(hmacKey), jni::make_jstring(inputPath), jni::make_jstring(outputPath));
     return [&]() {
       auto __promise = Promise<std::string>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {

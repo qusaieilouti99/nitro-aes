@@ -58,6 +58,14 @@ namespace margelo::nitro::NitroAes {
 
   public:
     // Methods
+    inline std::shared_ptr<Promise<std::string>> pbkdf2(const std::string& password, const std::string& salt, double cost, double length) override {
+      auto __result = _swiftPart.pbkdf2(password, salt, std::forward<decltype(cost)>(cost), std::forward<decltype(length)>(length));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
     inline std::shared_ptr<Promise<std::string>> encrypt(const std::string& text, const std::string& key, const std::string& iv, Algorithms algorithm) override {
       auto __result = _swiftPart.encrypt(text, key, iv, static_cast<int>(algorithm));
       if (__result.hasError()) [[unlikely]] {
@@ -74,8 +82,8 @@ namespace margelo::nitro::NitroAes {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<std::string>> encryptFile(const std::string& key, const std::string& iv, const std::string& inputPath, const std::string& outputPath) override {
-      auto __result = _swiftPart.encryptFile(key, iv, inputPath, outputPath);
+    inline std::shared_ptr<Promise<std::string>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) override {
+      auto __result = _swiftPart.encryptFile(key, iv, hmacKey, inputPath, outputPath);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

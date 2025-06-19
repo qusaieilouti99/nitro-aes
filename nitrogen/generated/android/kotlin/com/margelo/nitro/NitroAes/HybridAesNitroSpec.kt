@@ -42,6 +42,10 @@ abstract class HybridAesNitroSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
+  abstract fun pbkdf2(password: String, salt: String, cost: Double, length: Double): Promise<String>
+  
+  @DoNotStrip
+  @Keep
   abstract fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String>
   
   @DoNotStrip
@@ -50,7 +54,7 @@ abstract class HybridAesNitroSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun encryptFile(key: String, iv: String, inputPath: String, outputPath: String): Promise<String>
+  abstract fun encryptFile(key: String, iv: String, hmacKey: String, inputPath: String, outputPath: String): Promise<String>
   
   @DoNotStrip
   @Keep

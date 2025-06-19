@@ -14,9 +14,10 @@ public protocol HybridAesNitroSpec_protocol: HybridObject {
   
 
   // Methods
+  func pbkdf2(password: String, salt: String, cost: Double, length: Double) throws -> Promise<String>
   func encrypt(text: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String>
   func decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String>
-  func encryptFile(key: String, iv: String, inputPath: String, outputPath: String) throws -> Promise<String>
+  func encryptFile(key: String, iv: String, hmacKey: String, inputPath: String, outputPath: String) throws -> Promise<String>
   func decryptFile(key: String, iv: String, hmacKey: String, auth: String, inputPath: String, outputPath: String, paddingSize: Double) throws -> Promise<String>
   func hmac256(ciphertext: String, key: String) throws -> Promise<String>
   func hmac512(ciphertext: String, key: String) throws -> Promise<String>

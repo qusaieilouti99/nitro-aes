@@ -3,7 +3,14 @@ import type { HybridObject } from 'react-native-nitro-modules'
 
 type Algorithms = 'aes-128-cbc' | 'aes-192-cbc' | 'aes-256-cbc'
 
-export interface AesNitro extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
+export interface AesNitro
+  extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
+  pbkdf2(
+    password: string,
+    salt: string,
+    cost: number,
+    length: number
+  ): Promise<string>
   encrypt(
     text: string,
     key: string,
@@ -19,8 +26,9 @@ export interface AesNitro extends HybridObject<{ ios: 'swift'; android: 'kotlin'
   encryptFile(
     key: string,
     iv: string,
+    hmacKey: string,
     inputPath: string,
-    outputPath: string,
+    outputPath: string
   ): Promise<string>
   decryptFile(
     key: string,

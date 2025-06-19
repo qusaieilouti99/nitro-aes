@@ -14,6 +14,7 @@ namespace margelo::nitro::NitroAes {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
+      prototype.registerHybridMethod("pbkdf2", &HybridAesNitroSpec::pbkdf2);
       prototype.registerHybridMethod("encrypt", &HybridAesNitroSpec::encrypt);
       prototype.registerHybridMethod("decrypt", &HybridAesNitroSpec::decrypt);
       prototype.registerHybridMethod("encryptFile", &HybridAesNitroSpec::encryptFile);
