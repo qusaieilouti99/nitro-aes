@@ -12,6 +12,8 @@ import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 /**
  * Implementation of the Nitro AES module with PBKDF2 and HMAC-key support.
@@ -27,18 +29,26 @@ class NitroAes : HybridAesNitroSpec() {
     private const val CHUNK_SIZE = BLOCK_SIZE * 4 * 1024
   }
 
-  override fun pbkdf2(password: String, salt: String, cost: Double, length: Double): Promise<String> = Promise { resolve, reject ->
+  override fun pbkdf2(
+    password: String,
+    salt: String,
+    cost: Double,
+    length: Double
+  ): Promise<String> = Promise { resolve, reject ->
     try {
-      // PBKDF2 with SHA-512
-      val dk = PKCS5S2ParametersGenerator(SHA512Digest()).apply {
-        init(password.toByteArray(StandardCharsets.UTF_8), salt.toByteArray(StandardCharsets.UTF_8), cost.toInt())
-      }
-      val key = (dk.generateDerivedParameters(length.toInt() * 8) as KeyParameter).key
-      resolve(bytesToHex(key))
+      // PBKDF2 with HmacSHA512 (length in bits)
+      val spec = PBEKeySpec(
+        password.toCharArray(),
+        salt.toByteArray(StandardCharsets.UTF_8),
+        cost.toInt(),
+        (length * 8).toInt()
+      )
+      val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+      val keyBytes = factory.generateSecret(spec).encoded
+      resolve(bytesToHex(keyBytes))
     } catch (e: Exception) {
       reject(e)
     }
-  }
 
   override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> = Promise { resolve, reject ->
     try { resolve(encryptText(text, key, iv)) } catch (e: Throwable) { reject(e) }
