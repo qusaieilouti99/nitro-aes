@@ -1,6 +1,6 @@
 {
   "name": "@qusaieilouti99/nitro-aes",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A fast nitro module for aes encryption",
   "main": "lib/index",
   "module": "lib/index",
