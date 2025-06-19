@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "NitroAes"
+  ],
+  "ios": {
+    "iosModuleName": "NitroAes"
+  },
+  "android": {
+    "androidNamespace": [
+      "NitroAes"
+    ],
+    "androidCxxLibName": "NitroAes"
+  },
+  "autolinking": {
+    "Aes": {
+      "swift": "NitroAes",
+      "kotlin": "NitroAes"
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}
