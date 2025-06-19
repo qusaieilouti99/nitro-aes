@@ -49,6 +49,7 @@ class NitroAes : HybridAesNitroSpec() {
     } catch (e: Exception) {
       reject(e)
     }
+  }
 
   override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> = Promise { resolve, reject ->
     try { resolve(encryptText(text, key, iv)) } catch (e: Throwable) { reject(e) }
