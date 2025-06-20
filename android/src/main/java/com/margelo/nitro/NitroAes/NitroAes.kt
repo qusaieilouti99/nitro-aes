@@ -1,6 +1,7 @@
 package com.margelo.nitro.NitroAes
 
 import android.util.Base64
+import com.facebook.jni.HybridData
 import com.margelo.nitro.core.Promise
 import java.io.File
 import java.io.FileInputStream
