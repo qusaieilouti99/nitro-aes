@@ -1,8 +1,9 @@
 package com.margelo.nitro.NitroAes
 
 import android.util.Base64
-import com.facebook.jni.HybridData
 import com.margelo.nitro.core.Promise
+import com.margelo.nitro.NitroAes.NitroAesOnLoad
+import com.margelo.nitro.NitroAes.Algorithms
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -11,17 +12,21 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.Mac
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Implementation of the Nitro AES module with PBKDF2 and HMAC-key support.
  */
 class NitroAes : HybridAesNitroSpec() {
+
+  init {
+    NitroAesOnLoad.initializeNative()
+  }
+
   companion object {
-    init { NitroAesOnLoad.initializeNative() }
     private const val KEY_ALGORITHM = "AES"
     private const val TEXT_CIPHER = "AES/CBC/PKCS7Padding"
     private const val FILE_CIPHER = "AES/CBC/NoPadding"
@@ -30,13 +35,8 @@ class NitroAes : HybridAesNitroSpec() {
     private const val CHUNK_SIZE = BLOCK_SIZE * 4 * 1024
   }
 
-  override fun pbkdf2(
-    password: String,
-    salt: String,
-    cost: Double,
-    length: Double
-  ): Promise<String> = Promise { resolve, reject ->
-    try {
+  override fun pbkdf2(password: String, salt: String, cost: Double, length: Double): Promise<String> {
+    return Promise.async {
       val spec = PBEKeySpec(
         password.toCharArray(),
         salt.toByteArray(StandardCharsets.UTF_8),
@@ -45,36 +45,16 @@ class NitroAes : HybridAesNitroSpec() {
       )
       val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
       val keyBytes = factory.generateSecret(spec).encoded
-      resolve(bytesToHex(keyBytes))
-    } catch (e: Exception) {
-      reject(e)
+      bytesToHex(keyBytes)
     }
   }
 
-  override fun encrypt(
-    text: String,
-    key: String,
-    iv: String,
-    algorithm: Algorithms
-  ): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(encryptText(text, key, iv))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> {
+    return Promise.async { encryptText(text, key, iv) }
   }
 
-  override fun decrypt(
-    ciphertext: String,
-    key: String,
-    iv: String,
-    algorithm: Algorithms
-  ): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(decryptText(ciphertext, key, iv))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms): Promise<String> {
+    return Promise.async { decryptText(ciphertext, key, iv) }
   }
 
   override fun encryptFile(
@@ -83,12 +63,10 @@ class NitroAes : HybridAesNitroSpec() {
     hmacKey: String,
     inputPath: String,
     outputPath: String
-  ): Promise<String> = Promise { resolve, reject ->
-    try {
+  ): Promise<String> {
+    return Promise.async {
       val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
-      resolve("{\"auth\":\"$auth\",\"paddingSize\":$padding}")
-    } catch (e: Throwable) {
-      reject(e)
+      "{\"auth\":\"$auth\",\"paddingSize\":$padding}"
     }
   }
 
@@ -100,65 +78,38 @@ class NitroAes : HybridAesNitroSpec() {
     inputPath: String,
     outputPath: String,
     paddingSize: Double
-  ): Promise<String> = Promise { resolve, reject ->
-    try {
+  ): Promise<String> {
+    return Promise.async {
       doDecryptFile(key, iv, hmacKey, auth, inputPath, outputPath, paddingSize.toInt())
-      resolve("OK")
-    } catch (e: Throwable) {
-      reject(e)
+      "OK"
     }
   }
 
-  override fun hmac256(ciphertext: String, key: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(hmac(ciphertext, key, HMAC_SHA256))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun hmac256(ciphertext: String, key: String): Promise<String> {
+    return Promise.async { hmac(ciphertext, key, HMAC_SHA256) }
   }
 
-  override fun hmac512(ciphertext: String, key: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(hmac(ciphertext, key, "HmacSHA512"))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun hmac512(ciphertext: String, key: String): Promise<String> {
+    return Promise.async { hmac(ciphertext, key, "HmacSHA512") }
   }
 
-  override fun randomKey(length: Double): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(generateRandomKey(length.toInt()))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun randomKey(length: Double): Promise<String> {
+    return Promise.async { generateRandomKey(length.toInt()) }
   }
 
-  override fun sha1(text: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(sha(text, "SHA-1"))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun sha1(text: String): Promise<String> {
+    return Promise.async { sha(text, "SHA-1") }
   }
 
-  override fun sha256(text: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(sha(text, "SHA-256"))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun sha256(text: String): Promise<String> {
+    return Promise.async { sha(text, "SHA-256") }
   }
 
-  override fun sha512(text: String): Promise<String> = Promise { resolve, reject ->
-    try {
-      resolve(sha(text, "SHA-512"))
-    } catch (e: Throwable) {
-      reject(e)
-    }
+  override fun sha512(text: String): Promise<String> {
+    return Promise.async { sha(text, "SHA-512") }
   }
 
   // --- Utilities ---
-
   private fun hexToBytes(hex: String): ByteArray =
     hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
@@ -212,7 +163,6 @@ class NitroAes : HybridAesNitroSpec() {
     val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv)) }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-
     FileInputStream(File(inputPath)).use { input ->
       FileOutputStream(File(outputPath)).use { output ->
         val size = File(inputPath).length()
@@ -229,15 +179,12 @@ class NitroAes : HybridAesNitroSpec() {
           mac.update(enc); digest.update(enc)
           output.write(enc)
         }
-
         val final = cipher.doFinal()
         mac.update(final); digest.update(final)
         output.write(final)
-
         val hmac = mac.doFinal()
         digest.update(hmac)
         output.write(hmac)
-
         val auth = bytesToHex(digest.digest())
         return Pair(auth, padding)
       }
@@ -261,7 +208,6 @@ class NitroAes : HybridAesNitroSpec() {
     val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv)) }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-
     FileInputStream(File(inputPath)).use { input ->
       FileOutputStream(File(outputPath)).use { output ->
         val size = File(inputPath).length()
@@ -269,7 +215,6 @@ class NitroAes : HybridAesNitroSpec() {
         val encLen = size - macLen
         val buffer = ByteArray(CHUNK_SIZE)
         var rem = encLen.toInt()
-
         while (rem > 0) {
           val toRead = minOf(rem, CHUNK_SIZE)
           val read = input.read(buffer, 0, toRead)
@@ -278,13 +223,11 @@ class NitroAes : HybridAesNitroSpec() {
           if (rem <= CHUNK_SIZE) output.write(dec, 0, dec.size - paddingSize) else output.write(dec)
           rem -= read
         }
-
         val ourHmac = mac.doFinal()
         val theirHmac = ByteArray(macLen).also { input.read(it) }
         require(ourHmac.contentEquals(theirHmac)) { "HMAC mismatch" }
         digest.update(theirHmac)
         require(bytesToHex(digest.digest()) == theirAuth) { "Auth mismatch" }
-
         val final = cipher.doFinal()
         if (final.isNotEmpty()) output.write(final)
       }
