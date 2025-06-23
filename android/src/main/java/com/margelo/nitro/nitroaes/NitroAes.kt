@@ -3,12 +3,14 @@ package com.margelo.nitro.nitroaes
 import android.util.Base64
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.Promise
+import com.margelo.nitro.core.RuntimeError
 import com.margelo.nitro.nitroaes.NitroAesOnLoad
 import com.margelo.nitro.nitroaes.Algorithms
 import com.margelo.nitro.nitroaes.EncryptFileResult
 import com.margelo.nitro.nitroaes.HybridNitroAesSpec
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -20,9 +22,6 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * Implementation of the Nitro AES module with PBKDF2 and HMAC-key support.
- */
 @DoNotStrip
 class NitroAes : HybridNitroAesSpec() {
 
@@ -34,48 +33,56 @@ class NitroAes : HybridNitroAesSpec() {
     private const val BLOCK_SIZE = 16
     private const val CHUNK_SIZE = BLOCK_SIZE * 4 * 1024
 
-    // Lazy initialization - only called once when first accessed
     private val isInitialized: Boolean by lazy {
       NitroAesOnLoad.initializeNative()
       true
     }
 
     private fun ensureInitialized() {
-      // This will trigger initialization on first call
+      // Force native load
       isInitialized
     }
   }
 
   @DoNotStrip
-  override fun pbkdf2(password: String, salt: String, cost: Double, length: Double): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      val spec = PBEKeySpec(
-        password.toCharArray(),
-        salt.toByteArray(StandardCharsets.UTF_8),
-        cost.toInt(),
-        (length * 8).toInt()
-      )
-      val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
-      val keyBytes = factory.generateSecret(spec).encoded
-      bytesToHex(keyBytes)
-    }
+  override fun pbkdf2(
+    password: String,
+    salt: String,
+    cost: Double,
+    length: Double
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    val spec = PBEKeySpec(
+      password.toCharArray(),
+      salt.toByteArray(StandardCharsets.UTF_8),
+      cost.toInt(),
+      (length * 8).toInt()
+    )
+    val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+    val keyBytes = factory.generateSecret(spec).encoded
+    bytesToHex(keyBytes)
   }
 
   @DoNotStrip
-  override fun encrypt(text: String, key: String, iv: String, algorithm: Algorithms): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      encryptText(text, key, iv)
-    }
+  override fun encrypt(
+    text: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    encryptText(text, key, iv)
   }
 
   @DoNotStrip
-  override fun decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      decryptText(ciphertext, key, iv)
-    }
+  override fun decrypt(
+    ciphertext: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    decryptText(ciphertext, key, iv)
   }
 
   @DoNotStrip
@@ -85,116 +92,134 @@ class NitroAes : HybridNitroAesSpec() {
     hmacKey: String,
     inputPath: String,
     outputPath: String
-  ): Promise<EncryptFileResult> {
-    return Promise.async {
-      ensureInitialized()
-      val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
-      EncryptFileResult(auth, padding.toDouble())
-    }
+  ): Promise<EncryptFileResult> = Promise.async {
+    ensureInitialized()
+    val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
+    EncryptFileResult(auth, padding.toDouble())
   }
 
   @DoNotStrip
   override fun decryptFile(
-    key: String,
-    iv: String,
-    hmacKey: String,
-    auth: String,
+    keyHex: String,
+    ivHex: String,
+    hmacHex: String,
+    theirAuth: String,
     inputPath: String,
     outputPath: String,
     paddingSize: Double
   ): Promise<String> {
     return Promise.async {
       ensureInitialized()
-      doDecryptFile(key, iv, hmacKey, auth, inputPath, outputPath, paddingSize.toInt())
-      "OK"
+      try {
+        doDecryptFile(keyHex, ivHex, hmacHex, theirAuth, inputPath, outputPath, paddingSize.toInt())
+        "OK"
+      } catch (e: RuntimeError) {
+        throw e
+      } catch (e: FileNotFoundException) {
+        throw RuntimeError.error("File not found: ${e.message}")
+      } catch (e: IllegalArgumentException) {
+        throw RuntimeError.error("Decryption failed: ${e.message}")
+      } catch (e: Exception) {
+        throw RuntimeError.error("Unknown decryption error: ${e.message}")
+      }
     }
   }
 
   @DoNotStrip
-  override fun hmac256(ciphertext: String, key: String): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      hmac(ciphertext, key, HMAC_SHA256)
-    }
+  override fun hmac256(
+    ciphertext: String,
+    key: String
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    hmac(ciphertext, key, HMAC_SHA256)
   }
 
   @DoNotStrip
-  override fun hmac512(ciphertext: String, key: String): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      hmac(ciphertext, key, "HmacSHA512")
-    }
+  override fun hmac512(
+    ciphertext: String,
+    key: String
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    hmac(ciphertext, key, "HmacSHA512")
   }
 
   @DoNotStrip
-  override fun randomKey(length: Double): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      generateRandomKey(length.toInt())
-    }
+  override fun randomKey(length: Double): Promise<String> = Promise.async {
+    ensureInitialized()
+    generateRandomKey(length.toInt())
   }
 
   @DoNotStrip
-  override fun sha1(text: String): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      sha(text, "SHA-1")
-    }
+  override fun sha1(text: String): Promise<String> = Promise.async {
+    ensureInitialized()
+    sha(text, "SHA-1")
   }
 
   @DoNotStrip
-  override fun sha256(text: String): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      sha(text, "SHA-256")
-    }
+  override fun sha256(text: String): Promise<String> = Promise.async {
+    ensureInitialized()
+    sha(text, "SHA-256")
   }
 
   @DoNotStrip
-  override fun sha512(text: String): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      sha(text, "SHA-512")
-    }
+  override fun sha512(text: String): Promise<String> = Promise.async {
+    ensureInitialized()
+    sha(text, "SHA-512")
   }
 
-  // --- Utilities ---
+  // --- Internal utilities ---
+
   private fun hexToBytes(hex: String): ByteArray =
     hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
   private fun bytesToHex(bytes: ByteArray): String =
     bytes.joinToString("") { "%02x".format(it) }
 
-  private fun encryptText(text: String, keyHex: String, ivHex: String): String {
+  private fun encryptText(
+    text: String,
+    keyHex: String,
+    ivHex: String
+  ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
-    return Base64.encodeToString(cipher.doFinal(text.toByteArray(StandardCharsets.UTF_8)), Base64.NO_WRAP)
+    val encrypted = cipher.doFinal(text.toByteArray(StandardCharsets.UTF_8))
+    return Base64.encodeToString(encrypted, Base64.NO_WRAP)
   }
 
-  private fun decryptText(cipher: String, keyHex: String, ivHex: String): String {
+  private fun decryptText(
+    cipherText: String,
+    keyHex: String,
+    ivHex: String
+  ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
-    val data = Base64.decode(cipher, Base64.NO_WRAP)
+    val data = Base64.decode(cipherText, Base64.NO_WRAP)
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
-    return String(cipher.doFinal(data), StandardCharsets.UTF_8)
+    val decrypted = cipher.doFinal(data)
+    return String(decrypted, StandardCharsets.UTF_8)
   }
 
-  private fun hmac(text: String, keyHex: String, alg: String): String {
-    val mac = Mac.getInstance(alg)
-    mac.init(SecretKeySpec(hexToBytes(keyHex), alg))
-    return bytesToHex(mac.doFinal(text.toByteArray(StandardCharsets.UTF_8)))
+  private fun hmac(
+    text: String,
+    keyHex: String,
+    algorithm: String
+  ): String {
+    val mac = Mac.getInstance(algorithm)
+    mac.init(SecretKeySpec(hexToBytes(keyHex), algorithm))
+    val result = mac.doFinal(text.toByteArray(StandardCharsets.UTF_8))
+    return bytesToHex(result)
   }
 
   private fun sha(text: String, algorithm: String): String =
     bytesToHex(MessageDigest.getInstance(algorithm).digest(text.toByteArray(StandardCharsets.UTF_8)))
 
   private fun generateRandomKey(len: Int): String {
-    val b = ByteArray(len)
-    SecureRandom().nextBytes(b)
-    return bytesToHex(b)
+    val bytes = ByteArray(len)
+    SecureRandom().nextBytes(bytes)
+    return bytesToHex(bytes)
   }
 
   private fun doEncryptFile(
@@ -257,13 +282,18 @@ class NitroAes : HybridNitroAesSpec() {
     val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv)) }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-    FileInputStream(File(inputPath)).use { input ->
-      FileOutputStream(File(outputPath)).use { output ->
-        val size = File(inputPath).length()
+    val inFile = File(inputPath)
+    if (!inFile.exists()) {
+      throw RuntimeError.error("Input file does not exist at path: $inputPath")
+    }
+    val outFile = File(outputPath).apply { parentFile?.mkdirs() }
+    FileInputStream(inFile).use { input ->
+      FileOutputStream(outFile).use { output ->
+        val size = inFile.length()
         val macLen = mac.macLength
-        val encLen = size - macLen
+        val encLen = (size - macLen).toInt()
         val buffer = ByteArray(CHUNK_SIZE)
-        var rem = encLen.toInt()
+        var rem = encLen
         while (rem > 0) {
           val toRead = minOf(rem, CHUNK_SIZE)
           val read = input.read(buffer, 0, toRead)
@@ -274,11 +304,15 @@ class NitroAes : HybridNitroAesSpec() {
         }
         val ourHmac = mac.doFinal()
         val theirHmac = ByteArray(macLen).also { input.read(it) }
-        require(ourHmac.contentEquals(theirHmac)) { "HMAC mismatch" }
+        if (!ourHmac.contentEquals(theirHmac)) {
+          throw RuntimeError.error("HMAC mismatch: computed=${bytesToHex(ourHmac)} expected=$theirAuth")
+        }
         digest.update(theirHmac)
-        require(bytesToHex(digest.digest()) == theirAuth) { "Auth mismatch" }
-        val final = cipher.doFinal()
-        if (final.isNotEmpty()) output.write(final)
+        val computedAuth = bytesToHex(digest.digest())
+        if (computedAuth != theirAuth) {
+          throw RuntimeError.error("Auth digest mismatch: computed=$computedAuth expected=$theirAuth")
+        }
+        cipher.doFinal().takeIf { it.isNotEmpty() }?.let { output.write(it) }
       }
     }
   }
