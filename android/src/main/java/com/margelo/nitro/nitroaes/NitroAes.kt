@@ -3,7 +3,6 @@ package com.margelo.nitro.nitroaes
 import android.util.Base64
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.Promise
-import com.margelo.nitro.core.RuntimeError
 import com.margelo.nitro.nitroaes.NitroAesOnLoad
 import com.margelo.nitro.nitroaes.Algorithms
 import com.margelo.nitro.nitroaes.EncryptFileResult
@@ -107,21 +106,17 @@ class NitroAes : HybridNitroAesSpec() {
     inputPath: String,
     outputPath: String,
     paddingSize: Double
-  ): Promise<String> {
-    return Promise.async {
-      ensureInitialized()
-      try {
-        doDecryptFile(keyHex, ivHex, hmacHex, theirAuth, inputPath, outputPath, paddingSize.toInt())
-        "OK"
-      } catch (e: RuntimeError) {
-        throw e
-      } catch (e: FileNotFoundException) {
-        throw RuntimeError.error("File not found: ${e.message}")
-      } catch (e: IllegalArgumentException) {
-        throw RuntimeError.error("Decryption failed: ${e.message}")
-      } catch (e: Exception) {
-        throw RuntimeError.error("Unknown decryption error: ${e.message}")
-      }
+  ): Promise<String> = Promise.async {
+    ensureInitialized()
+    try {
+      doDecryptFile(keyHex, ivHex, hmacHex, theirAuth, inputPath, outputPath, paddingSize.toInt())
+      "OK"
+    } catch (e: FileNotFoundException) {
+      throw Error("File not found: ${e.message}")
+    } catch (e: IllegalArgumentException) {
+      throw Error("Decryption failed: ${e.message}")
+    } catch (e: Exception) {
+      throw Error("Unknown decryption error: ${e.message}")
     }
   }
 
@@ -166,8 +161,6 @@ class NitroAes : HybridNitroAesSpec() {
     ensureInitialized()
     sha(text, "SHA-512")
   }
-
-  // --- Internal utilities ---
 
   private fun hexToBytes(hex: String): ByteArray =
     hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
@@ -284,7 +277,7 @@ class NitroAes : HybridNitroAesSpec() {
     val digest = MessageDigest.getInstance("SHA-256")
     val inFile = File(inputPath)
     if (!inFile.exists()) {
-      throw RuntimeError.error("Input file does not exist at path: $inputPath")
+      throw Error("Input file does not exist at path: $inputPath")
     }
     val outFile = File(outputPath).apply { parentFile?.mkdirs() }
     FileInputStream(inFile).use { input ->
@@ -305,12 +298,12 @@ class NitroAes : HybridNitroAesSpec() {
         val ourHmac = mac.doFinal()
         val theirHmac = ByteArray(macLen).also { input.read(it) }
         if (!ourHmac.contentEquals(theirHmac)) {
-          throw RuntimeError.error("HMAC mismatch: computed=${bytesToHex(ourHmac)} expected=$theirAuth")
+          throw Error("HMAC mismatch: computed=${bytesToHex(ourHmac)} expected=$theirAuth")
         }
         digest.update(theirHmac)
         val computedAuth = bytesToHex(digest.digest())
         if (computedAuth != theirAuth) {
-          throw RuntimeError.error("Auth digest mismatch: computed=$computedAuth expected=$theirAuth")
+          throw Error("Auth digest mismatch: computed=$computedAuth expected=$theirAuth")
         }
         cipher.doFinal().takeIf { it.isNotEmpty() }?.let { output.write(it) }
       }
