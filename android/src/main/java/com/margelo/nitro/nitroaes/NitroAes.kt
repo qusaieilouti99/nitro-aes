@@ -89,7 +89,7 @@ class NitroAes : HybridNitroAesSpec() {
     return Promise.async {
       ensureInitialized()
       val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
-      EncryptFileResult(auth, padding)
+      EncryptFileResult(auth, padding.toDouble())
     }
   }
 
