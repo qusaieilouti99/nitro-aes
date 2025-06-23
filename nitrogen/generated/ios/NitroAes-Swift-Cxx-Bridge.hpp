@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `EncryptFileResult` to properly resolve imports.
+namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 // Forward declaration of `HybridNitroAesSpec` to properly resolve imports.
 namespace margelo::nitro::nitroaes { class HybridNitroAesSpec; }
 
@@ -16,6 +18,7 @@ namespace margelo::nitro::nitroaes { class HybridNitroAesSpec; }
 namespace NitroAes { class HybridNitroAesSpec_cxx; }
 
 // Include C++ defined types
+#include "EncryptFileResult.hpp"
 #include "HybridNitroAesSpec.hpp"
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/PromiseHolder.hpp>
@@ -87,6 +90,40 @@ namespace margelo::nitro::nitroaes::bridge::swift {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::shared_ptr<Promise<EncryptFileResult>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<EncryptFileResult>>`.
+   */
+  using std__shared_ptr_Promise_EncryptFileResult__ = std::shared_ptr<Promise<EncryptFileResult>>;
+  inline std::shared_ptr<Promise<EncryptFileResult>> create_std__shared_ptr_Promise_EncryptFileResult__() {
+    return Promise<EncryptFileResult>::create();
+  }
+  inline PromiseHolder<EncryptFileResult> wrap_std__shared_ptr_Promise_EncryptFileResult__(std::shared_ptr<Promise<EncryptFileResult>> promise) {
+    return PromiseHolder<EncryptFileResult>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(const EncryptFileResult& /* result */)>
+  /**
+   * Specialized version of `std::function<void(const EncryptFileResult&)>`.
+   */
+  using Func_void_EncryptFileResult = std::function<void(const EncryptFileResult& /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(const EncryptFileResult& / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_EncryptFileResult_Wrapper final {
+  public:
+    explicit Func_void_EncryptFileResult_Wrapper(std::function<void(const EncryptFileResult& /* result */)>&& func): _function(std::make_shared<std::function<void(const EncryptFileResult& /* result */)>>(std::move(func))) {}
+    inline void call(EncryptFileResult result) const {
+      _function->operator()(result);
+    }
+  private:
+    std::shared_ptr<std::function<void(const EncryptFileResult& /* result */)>> _function;
+  };
+  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* _Nonnull swiftClosureWrapper);
+  inline Func_void_EncryptFileResult_Wrapper wrap_Func_void_EncryptFileResult(Func_void_EncryptFileResult value) {
+    return Func_void_EncryptFileResult_Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>
   /**
    * Specialized version of `std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>`.
@@ -106,6 +143,15 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   }
   inline Result_std__shared_ptr_Promise_std__string___ create_Result_std__shared_ptr_Promise_std__string___(const std::exception_ptr& error) {
     return Result<std::shared_ptr<Promise<std::string>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<EncryptFileResult>>>
+  using Result_std__shared_ptr_Promise_EncryptFileResult___ = Result<std::shared_ptr<Promise<EncryptFileResult>>>;
+  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::shared_ptr<Promise<EncryptFileResult>>& value) {
+    return Result<std::shared_ptr<Promise<EncryptFileResult>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::exception_ptr& error) {
+    return Result<std::shared_ptr<Promise<EncryptFileResult>>>::withError(error);
   }
 
 } // namespace margelo::nitro::nitroaes::bridge::swift

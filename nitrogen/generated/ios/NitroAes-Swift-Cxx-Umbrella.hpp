@@ -10,11 +10,14 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `Algorithms` to properly resolve imports.
 namespace margelo::nitro::nitroaes { enum class Algorithms; }
+// Forward declaration of `EncryptFileResult` to properly resolve imports.
+namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 // Forward declaration of `HybridNitroAesSpec` to properly resolve imports.
 namespace margelo::nitro::nitroaes { class HybridNitroAesSpec; }
 
 // Include C++ defined types
 #include "Algorithms.hpp"
+#include "EncryptFileResult.hpp"
 #include "HybridNitroAesSpec.hpp"
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/Result.hpp>

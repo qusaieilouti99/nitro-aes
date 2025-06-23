@@ -54,7 +54,7 @@ abstract class HybridNitroAesSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun encryptFile(key: String, iv: String, hmacKey: String, inputPath: String, outputPath: String): Promise<String>
+  abstract fun encryptFile(key: String, iv: String, hmacKey: String, inputPath: String, outputPath: String): Promise<EncryptFileResult>
   
   @DoNotStrip
   @Keep

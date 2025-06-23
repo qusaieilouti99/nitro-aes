@@ -14,10 +14,13 @@ namespace NitroAes { class HybridNitroAesSpec_cxx; }
 
 // Forward declaration of `Algorithms` to properly resolve imports.
 namespace margelo::nitro::nitroaes { enum class Algorithms; }
+// Forward declaration of `EncryptFileResult` to properly resolve imports.
+namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
 #include "Algorithms.hpp"
+#include "EncryptFileResult.hpp"
 
 #include "NitroAes-Swift-Cxx-Umbrella.hpp"
 
@@ -82,7 +85,7 @@ namespace margelo::nitro::nitroaes {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<std::string>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) override {
+    inline std::shared_ptr<Promise<EncryptFileResult>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) override {
       auto __result = _swiftPart.encryptFile(key, iv, hmacKey, inputPath, outputPath);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());

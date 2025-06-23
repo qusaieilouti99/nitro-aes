@@ -58,7 +58,13 @@ public class NitroAes: HybridAesNitroSpec {
   }
 
   // MARK: - File Encryption
-  public func encryptFile(key: String, iv: String, hmacKey: String, inputPath: String, outputPath: String) throws -> Promise<String> {
+  public func encryptFile(
+    key: String,
+    iv: String,
+    hmacKey: String,
+    inputPath: String,
+    outputPath: String
+  ) throws -> Promise<EncryptFileResult> {
     return Promise { resolve, reject in
       DispatchQueue.global().async {
         do {
@@ -69,9 +75,7 @@ public class NitroAes: HybridAesNitroSpec {
             inputPath: inputPath,
             outputPath: outputPath
           )
-          let result: [String: Any] = ["auth": auth, "paddingSize": padding]
-          let data = try JSONSerialization.data(withJSONObject: result, options: [])
-          resolve(String(data: data, encoding: .utf8)!)
+          resolve(EncryptFileResult(auth: auth, paddingSize: padding))
         } catch {
           reject(error)
         }
