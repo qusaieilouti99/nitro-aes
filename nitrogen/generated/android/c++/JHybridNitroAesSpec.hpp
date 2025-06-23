@@ -54,7 +54,7 @@ namespace margelo::nitro::nitroaes {
     std::shared_ptr<Promise<std::string>> pbkdf2(const std::string& password, const std::string& salt, double cost, double length) override;
     std::shared_ptr<Promise<std::string>> encrypt(const std::string& text, const std::string& key, const std::string& iv, Algorithms algorithm) override;
     std::shared_ptr<Promise<std::string>> decrypt(const std::string& ciphertext, const std::string& key, const std::string& iv, Algorithms algorithm) override;
-    std::shared_ptr<Promise<std::string>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) override;
+    std::shared_ptr<Promise<EncryptFileResult>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) override;
     std::shared_ptr<Promise<std::string>> decryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& auth, const std::string& inputPath, const std::string& outputPath, double paddingSize) override;
     std::shared_ptr<Promise<std::string>> hmac256(const std::string& ciphertext, const std::string& key) override;
     std::shared_ptr<Promise<std::string>> hmac512(const std::string& ciphertext, const std::string& key) override;

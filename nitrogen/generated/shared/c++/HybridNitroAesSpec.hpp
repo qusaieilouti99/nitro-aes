@@ -15,10 +15,13 @@
 
 // Forward declaration of `Algorithms` to properly resolve imports.
 namespace margelo::nitro::nitroaes { enum class Algorithms; }
+// Forward declaration of `EncryptFileResult` to properly resolve imports.
+namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
 #include "Algorithms.hpp"
+#include "EncryptFileResult.hpp"
 
 namespace margelo::nitro::nitroaes {
 
@@ -54,7 +57,7 @@ namespace margelo::nitro::nitroaes {
       virtual std::shared_ptr<Promise<std::string>> pbkdf2(const std::string& password, const std::string& salt, double cost, double length) = 0;
       virtual std::shared_ptr<Promise<std::string>> encrypt(const std::string& text, const std::string& key, const std::string& iv, Algorithms algorithm) = 0;
       virtual std::shared_ptr<Promise<std::string>> decrypt(const std::string& ciphertext, const std::string& key, const std::string& iv, Algorithms algorithm) = 0;
-      virtual std::shared_ptr<Promise<std::string>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) = 0;
+      virtual std::shared_ptr<Promise<EncryptFileResult>> encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) = 0;
       virtual std::shared_ptr<Promise<std::string>> decryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& auth, const std::string& inputPath, const std::string& outputPath, double paddingSize) = 0;
       virtual std::shared_ptr<Promise<std::string>> hmac256(const std::string& ciphertext, const std::string& key) = 0;
       virtual std::shared_ptr<Promise<std::string>> hmac512(const std::string& ciphertext, const std::string& key) = 0;

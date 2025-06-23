@@ -5,6 +5,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroaes.NitroAesOnLoad
 import com.margelo.nitro.nitroaes.Algorithms
+import com.margelo.nitro.nitroaes.EncryptFileResult
 import com.margelo.nitro.nitroaes.HybridNitroAesSpec
 import java.io.File
 import java.io.FileInputStream
@@ -84,11 +85,11 @@ class NitroAes : HybridNitroAesSpec() {
     hmacKey: String,
     inputPath: String,
     outputPath: String
-  ): Promise<String> {
+  ): Promise<EncryptFileResult> {
     return Promise.async {
       ensureInitialized()
       val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
-      "{\"auth\":\"$auth\",\"paddingSize\":$padding}"
+      EncryptFileResult(auth, padding)
     }
   }
 

@@ -7,12 +7,16 @@
 
 #include "JHybridNitroAesSpec.hpp"
 
+// Forward declaration of `EncryptFileResult` to properly resolve imports.
+namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 // Forward declaration of `Algorithms` to properly resolve imports.
 namespace margelo::nitro::nitroaes { enum class Algorithms; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
 #include <NitroModules/JPromise.hpp>
+#include "EncryptFileResult.hpp"
+#include "JEncryptFileResult.hpp"
 #include "Algorithms.hpp"
 #include "JAlgorithms.hpp"
 
@@ -85,14 +89,14 @@ namespace margelo::nitro::nitroaes {
       return __promise;
     }();
   }
-  std::shared_ptr<Promise<std::string>> JHybridNitroAesSpec::encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) {
+  std::shared_ptr<Promise<EncryptFileResult>> JHybridNitroAesSpec::encryptFile(const std::string& key, const std::string& iv, const std::string& hmacKey, const std::string& inputPath, const std::string& outputPath) {
     static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* iv */, jni::alias_ref<jni::JString> /* hmacKey */, jni::alias_ref<jni::JString> /* inputPath */, jni::alias_ref<jni::JString> /* outputPath */)>("encryptFile");
     auto __result = method(_javaPart, jni::make_jstring(key), jni::make_jstring(iv), jni::make_jstring(hmacKey), jni::make_jstring(inputPath), jni::make_jstring(outputPath));
     return [&]() {
-      auto __promise = Promise<std::string>::create();
+      auto __promise = Promise<EncryptFileResult>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
-        auto __result = jni::static_ref_cast<jni::JString>(__boxedResult);
-        __promise->resolve(__result->toStdString());
+        auto __result = jni::static_ref_cast<JEncryptFileResult>(__boxedResult);
+        __promise->resolve(__result->toCpp());
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);

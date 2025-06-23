@@ -29,6 +29,14 @@ namespace margelo::nitro::nitroaes::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(const EncryptFileResult& /* result */)>
+  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* _Nonnull swiftClosureWrapper) {
+    auto swiftClosure = NitroAes::Func_void_EncryptFileResult::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const EncryptFileResult& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
   // pragma MARK: std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>
   std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec> create_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(void* _Nonnull swiftUnsafePointer) {
     NitroAes::HybridNitroAesSpec_cxx swiftPart = NitroAes::HybridNitroAesSpec_cxx::fromUnsafe(swiftUnsafePointer);

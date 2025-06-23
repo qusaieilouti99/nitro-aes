@@ -1,9 +1,10 @@
-// TODO: Export specs that extend HybridObject<...> here
-// TODO: Export specs that extend HybridObject<...> here
 import type { HybridObject } from 'react-native-nitro-modules'
 
 type Algorithms = 'aes-128-cbc' | 'aes-192-cbc' | 'aes-256-cbc'
-
+interface EncryptFileResult {
+  auth: string
+  paddingSize: number
+}
 export interface NitroAes
   extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
   pbkdf2(
@@ -30,7 +31,7 @@ export interface NitroAes
     hmacKey: string,
     inputPath: string,
     outputPath: string
-  ): Promise<string>
+  ): Promise<EncryptFileResult>
   decryptFile(
     key: string,
     iv: string,
