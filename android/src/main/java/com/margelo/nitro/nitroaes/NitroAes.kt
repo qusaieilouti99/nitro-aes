@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroaes
 
 import android.util.Base64
+import android.util.Log
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroaes.NitroAesOnLoad
@@ -11,6 +12,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -25,6 +27,7 @@ import javax.crypto.spec.SecretKeySpec
 class NitroAes : HybridNitroAesSpec() {
 
   companion object {
+    private const val TAG = "NitroAes"
     private const val KEY_ALGORITHM = "AES"
     private const val TEXT_CIPHER = "AES/CBC/PKCS7Padding"
     private const val FILE_CIPHER = "AES/CBC/NoPadding"
@@ -50,16 +53,35 @@ class NitroAes : HybridNitroAesSpec() {
     cost: Double,
     length: Double
   ): Promise<String> = Promise.async {
-    ensureInitialized()
-    val spec = PBEKeySpec(
-      password.toCharArray(),
-      salt.toByteArray(StandardCharsets.UTF_8),
-      cost.toInt(),
-      (length * 8).toInt()
-    )
-    val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
-    val keyBytes = factory.generateSecret(spec).encoded
-    bytesToHex(keyBytes)
+    try {
+      ensureInitialized()
+
+      if (password.isEmpty()) {
+        throw IllegalArgumentException("Password cannot be empty")
+      }
+      if (salt.isEmpty()) {
+        throw IllegalArgumentException("Salt cannot be empty")
+      }
+      if (cost <= 0) {
+        throw IllegalArgumentException("Cost must be positive")
+      }
+      if (length <= 0) {
+        throw IllegalArgumentException("Length must be positive")
+      }
+
+      val spec = PBEKeySpec(
+        password.toCharArray(),
+        salt.toByteArray(StandardCharsets.UTF_8),
+        cost.toInt(),
+        (length * 8).toInt()
+      )
+      val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+      val keyBytes = factory.generateSecret(spec).encoded
+      bytesToHex(keyBytes)
+    } catch (e: Exception) {
+      Log.e(TAG, "PBKDF2 error: ${e.message}", e)
+      throw RuntimeException("PBKDF2 failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
@@ -69,8 +91,17 @@ class NitroAes : HybridNitroAesSpec() {
     iv: String,
     algorithm: Algorithms
   ): Promise<String> = Promise.async {
-    ensureInitialized()
-    encryptText(text, key, iv)
+    try {
+      ensureInitialized()
+      validateHexString(key, "key")
+      if (iv.isNotEmpty()) {
+        validateHexString(iv, "iv")
+      }
+      encryptText(text, key, iv)
+    } catch (e: Exception) {
+      Log.e(TAG, "Encrypt error: ${e.message}", e)
+      throw RuntimeException("Encryption failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
@@ -80,8 +111,17 @@ class NitroAes : HybridNitroAesSpec() {
     iv: String,
     algorithm: Algorithms
   ): Promise<String> = Promise.async {
-    ensureInitialized()
-    decryptText(ciphertext, key, iv)
+    try {
+      ensureInitialized()
+      validateHexString(key, "key")
+      if (iv.isNotEmpty()) {
+        validateHexString(iv, "iv")
+      }
+      decryptText(ciphertext, key, iv)
+    } catch (e: Exception) {
+      Log.e(TAG, "Decrypt error: ${e.message}", e)
+      throw RuntimeException("Decryption failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
@@ -92,9 +132,22 @@ class NitroAes : HybridNitroAesSpec() {
     inputPath: String,
     outputPath: String
   ): Promise<EncryptFileResult> = Promise.async {
-    ensureInitialized()
-    val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
-    EncryptFileResult(auth, padding.toDouble())
+    try {
+      ensureInitialized()
+      validateHexString(key, "key")
+      validateHexString(iv, "iv")
+      validateHexString(hmacKey, "hmacKey")
+
+      if (inputPath.isEmpty() || outputPath.isEmpty()) {
+        throw IllegalArgumentException("File paths cannot be empty")
+      }
+
+      val (auth, padding) = doEncryptFile(key, iv, hmacKey, inputPath, outputPath)
+      EncryptFileResult(auth, padding.toDouble())
+    } catch (e: Exception) {
+      Log.e(TAG, "Encrypt file error: ${e.message}", e)
+      throw RuntimeException("File encryption failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
@@ -107,16 +160,42 @@ class NitroAes : HybridNitroAesSpec() {
     outputPath: String,
     paddingSize: Double
   ): Promise<String> = Promise.async {
-    ensureInitialized()
     try {
+      ensureInitialized()
+
+      // Validate inputs
+      validateHexString(keyHex, "key")
+      validateHexString(ivHex, "iv")
+      validateHexString(hmacHex, "hmacKey")
+      validateHexString(theirAuth, "auth")
+
+      if (inputPath.isEmpty() || outputPath.isEmpty()) {
+        throw IllegalArgumentException("File paths cannot be empty")
+      }
+
+      if (paddingSize < 0 || paddingSize >= BLOCK_SIZE) {
+        throw IllegalArgumentException("Invalid padding size: $paddingSize")
+      }
+
+      Log.d(TAG, "Decrypting file: $inputPath -> $outputPath")
+
       doDecryptFile(keyHex, ivHex, hmacHex, theirAuth, inputPath, outputPath, paddingSize.toInt())
       "OK"
     } catch (e: FileNotFoundException) {
-      throw Error("File not found: ${e.message}")
+      Log.e(TAG, "File not found: ${e.message}", e)
+      throw RuntimeException("File not found: ${e.message}", e)
+    } catch (e: SecurityException) {
+      Log.e(TAG, "Security error: ${e.message}", e)
+      throw RuntimeException("Security error: ${e.message}", e)
     } catch (e: IllegalArgumentException) {
-      throw Error("Decryption failed: ${e.message}")
+      Log.e(TAG, "Invalid argument: ${e.message}", e)
+      throw RuntimeException("Invalid argument: ${e.message}", e)
+    } catch (e: IOException) {
+      Log.e(TAG, "IO error: ${e.message}", e)
+      throw RuntimeException("IO error: ${e.message}", e)
     } catch (e: Exception) {
-      throw Error("Unknown decryption error: ${e.message}")
+      Log.e(TAG, "Decryption error: ${e.message}", e)
+      throw RuntimeException("Decryption failed: ${e.message}", e)
     }
   }
 
@@ -125,8 +204,14 @@ class NitroAes : HybridNitroAesSpec() {
     ciphertext: String,
     key: String
   ): Promise<String> = Promise.async {
-    ensureInitialized()
-    hmac(ciphertext, key, HMAC_SHA256)
+    try {
+      ensureInitialized()
+      validateHexString(key, "key")
+      hmac(ciphertext, key, HMAC_SHA256)
+    } catch (e: Exception) {
+      Log.e(TAG, "HMAC256 error: ${e.message}", e)
+      throw RuntimeException("HMAC256 failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
@@ -134,36 +219,82 @@ class NitroAes : HybridNitroAesSpec() {
     ciphertext: String,
     key: String
   ): Promise<String> = Promise.async {
-    ensureInitialized()
-    hmac(ciphertext, key, "HmacSHA512")
+    try {
+      ensureInitialized()
+      validateHexString(key, "key")
+      hmac(ciphertext, key, "HmacSHA512")
+    } catch (e: Exception) {
+      Log.e(TAG, "HMAC512 error: ${e.message}", e)
+      throw RuntimeException("HMAC512 failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
   override fun randomKey(length: Double): Promise<String> = Promise.async {
-    ensureInitialized()
-    generateRandomKey(length.toInt())
+    try {
+      ensureInitialized()
+      if (length <= 0) {
+        throw IllegalArgumentException("Length must be positive")
+      }
+      generateRandomKey(length.toInt())
+    } catch (e: Exception) {
+      Log.e(TAG, "Random key generation error: ${e.message}", e)
+      throw RuntimeException("Random key generation failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
   override fun sha1(text: String): Promise<String> = Promise.async {
-    ensureInitialized()
-    sha(text, "SHA-1")
+    try {
+      ensureInitialized()
+      sha(text, "SHA-1")
+    } catch (e: Exception) {
+      Log.e(TAG, "SHA1 error: ${e.message}", e)
+      throw RuntimeException("SHA1 failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
   override fun sha256(text: String): Promise<String> = Promise.async {
-    ensureInitialized()
-    sha(text, "SHA-256")
+    try {
+      ensureInitialized()
+      sha(text, "SHA-256")
+    } catch (e: Exception) {
+      Log.e(TAG, "SHA256 error: ${e.message}", e)
+      throw RuntimeException("SHA256 failed: ${e.message}", e)
+    }
   }
 
   @DoNotStrip
   override fun sha512(text: String): Promise<String> = Promise.async {
-    ensureInitialized()
-    sha(text, "SHA-512")
+    try {
+      ensureInitialized()
+      sha(text, "SHA-512")
+    } catch (e: Exception) {
+      Log.e(TAG, "SHA512 error: ${e.message}", e)
+      throw RuntimeException("SHA512 failed: ${e.message}", e)
+    }
   }
 
-  private fun hexToBytes(hex: String): ByteArray =
-    hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+  private fun validateHexString(hex: String, name: String) {
+    if (hex.isEmpty()) {
+      throw IllegalArgumentException("$name cannot be empty")
+    }
+    if (hex.length % 2 != 0) {
+      throw IllegalArgumentException("$name must have even length")
+    }
+    if (!hex.matches(Regex("^[0-9a-fA-F]+$"))) {
+      throw IllegalArgumentException("$name contains invalid hex characters")
+    }
+  }
+
+  private fun hexToBytes(hex: String): ByteArray {
+    try {
+      return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    } catch (e: NumberFormatException) {
+      throw IllegalArgumentException("Invalid hex string: $hex", e)
+    }
+  }
 
   private fun bytesToHex(bytes: ByteArray): String =
     bytes.joinToString("") { "%02x".format(it) }
@@ -175,6 +306,14 @@ class NitroAes : HybridNitroAesSpec() {
   ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
+
+    if (key.size != 32) { // 256 bits
+      throw IllegalArgumentException("Key must be 256 bits (64 hex characters)")
+    }
+    if (iv.size != BLOCK_SIZE) {
+      throw IllegalArgumentException("IV must be 128 bits (32 hex characters)")
+    }
+
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
     val encrypted = cipher.doFinal(text.toByteArray(StandardCharsets.UTF_8))
@@ -188,6 +327,14 @@ class NitroAes : HybridNitroAesSpec() {
   ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
+
+    if (key.size != 32) { // 256 bits
+      throw IllegalArgumentException("Key must be 256 bits (64 hex characters)")
+    }
+    if (iv.size != BLOCK_SIZE) {
+      throw IllegalArgumentException("IV must be 128 bits (32 hex characters)")
+    }
+
     val data = Base64.decode(cipherText, Base64.NO_WRAP)
     val cipher = Cipher.getInstance(TEXT_CIPHER)
     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, KEY_ALGORITHM), IvParameterSpec(iv))
@@ -200,8 +347,9 @@ class NitroAes : HybridNitroAesSpec() {
     keyHex: String,
     algorithm: String
   ): String {
+    val key = hexToBytes(keyHex)
     val mac = Mac.getInstance(algorithm)
-    mac.init(SecretKeySpec(hexToBytes(keyHex), algorithm))
+    mac.init(SecretKeySpec(key, algorithm))
     val result = mac.doFinal(text.toByteArray(StandardCharsets.UTF_8))
     return bytesToHex(result)
   }
@@ -225,33 +373,77 @@ class NitroAes : HybridNitroAesSpec() {
     val key = hexToBytes(keyHex)
     val iv = hexToBytes(ivHex)
     val hmacKey = hexToBytes(hmacHex)
+
+    if (key.size != 32) {
+      throw IllegalArgumentException("Key must be 256 bits")
+    }
+    if (iv.size != BLOCK_SIZE) {
+      throw IllegalArgumentException("IV must be 128 bits")
+    }
+    if (hmacKey.size != 32) {
+      throw IllegalArgumentException("HMAC key must be 256 bits")
+    }
+
+    val inFile = File(inputPath)
+    if (!inFile.exists()) {
+      throw FileNotFoundException("Input file does not exist: $inputPath")
+    }
+    if (!inFile.canRead()) {
+      throw SecurityException("Cannot read input file: $inputPath")
+    }
+
+    val outFile = File(outputPath)
+    outFile.parentFile?.let { parent ->
+      if (!parent.exists() && !parent.mkdirs()) {
+        throw IOException("Cannot create output directory: ${parent.absolutePath}")
+      }
+    }
+
     val secretKey = SecretKeySpec(key, KEY_ALGORITHM)
     val macKey = SecretKeySpec(hmacKey, HMAC_SHA256)
-    val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv)) }
+    val cipher = Cipher.getInstance(FILE_CIPHER).apply {
+      init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv))
+    }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
-    FileInputStream(File(inputPath)).use { input ->
-      FileOutputStream(File(outputPath)).use { output ->
-        val size = File(inputPath).length()
+
+    FileInputStream(inFile).use { input ->
+      FileOutputStream(outFile).use { output ->
+        val size = inFile.length()
         val padding = if (size % BLOCK_SIZE == 0L) 0 else (BLOCK_SIZE - (size % BLOCK_SIZE)).toInt()
         val buffer = ByteArray(CHUNK_SIZE)
         val chunks = Math.ceil(size.toDouble() / CHUNK_SIZE).toInt()
+
         for (i in 0 until chunks) {
           var read = input.read(buffer)
+          if (read == -1) break
+
           if (i == chunks - 1 && padding > 0) {
-            for (j in read until read + padding) buffer[j] = padding.toByte()
+            for (j in read until read + padding) {
+              buffer[j] = padding.toByte()
+            }
             read += padding
           }
+
           val enc = cipher.update(buffer, 0, read)
-          mac.update(enc); digest.update(enc)
-          output.write(enc)
+          if (enc != null) {
+            mac.update(enc)
+            digest.update(enc)
+            output.write(enc)
+          }
         }
+
         val final = cipher.doFinal()
-        mac.update(final); digest.update(final)
-        output.write(final)
+        if (final.isNotEmpty()) {
+          mac.update(final)
+          digest.update(final)
+          output.write(final)
+        }
+
         val hmac = mac.doFinal()
         digest.update(hmac)
         output.write(hmac)
+
         val auth = bytesToHex(digest.digest())
         return Pair(auth, padding)
       }
@@ -270,42 +462,103 @@ class NitroAes : HybridNitroAesSpec() {
     val key = hexToBytes(keyHex)
     val iv = hexToBytes(ivHex)
     val hmacKey = hexToBytes(hmacHex)
+
+    if (key.size != 32) {
+      throw IllegalArgumentException("Key must be 256 bits")
+    }
+    if (iv.size != BLOCK_SIZE) {
+      throw IllegalArgumentException("IV must be 128 bits")
+    }
+    if (hmacKey.size != 32) {
+      throw IllegalArgumentException("HMAC key must be 256 bits")
+    }
+
     val secretKey = SecretKeySpec(key, KEY_ALGORITHM)
     val macKey = SecretKeySpec(hmacKey, HMAC_SHA256)
-    val cipher = Cipher.getInstance(FILE_CIPHER).apply { init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv)) }
+    val cipher = Cipher.getInstance(FILE_CIPHER).apply {
+      init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
+    }
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
+
     val inFile = File(inputPath)
     if (!inFile.exists()) {
-      throw Error("Input file does not exist at path: $inputPath")
+      throw FileNotFoundException("Input file does not exist: $inputPath")
     }
-    val outFile = File(outputPath).apply { parentFile?.mkdirs() }
+    if (!inFile.canRead()) {
+      throw SecurityException("Cannot read input file: $inputPath")
+    }
+
+    val outFile = File(outputPath)
+    outFile.parentFile?.let { parent ->
+      if (!parent.exists() && !parent.mkdirs()) {
+        throw IOException("Cannot create output directory: ${parent.absolutePath}")
+      }
+    }
+
     FileInputStream(inFile).use { input ->
       FileOutputStream(outFile).use { output ->
         val size = inFile.length()
         val macLen = mac.macLength
+
+        if (size <= macLen) {
+          throw IllegalArgumentException("File too small to contain valid encrypted data")
+        }
+
         val encLen = (size - macLen).toInt()
         val buffer = ByteArray(CHUNK_SIZE)
         var rem = encLen
+
         while (rem > 0) {
           val toRead = minOf(rem, CHUNK_SIZE)
           val read = input.read(buffer, 0, toRead)
-          mac.update(buffer, 0, read); digest.update(buffer, 0, read)
+          if (read == -1) {
+            throw IOException("Unexpected end of file")
+          }
+
+          mac.update(buffer, 0, read)
+          digest.update(buffer, 0, read)
+
           val dec = cipher.update(buffer, 0, read)
-          if (rem <= CHUNK_SIZE) output.write(dec, 0, dec.size - paddingSize) else output.write(dec)
+          if (dec != null) {
+            if (rem <= CHUNK_SIZE && paddingSize > 0) {
+              // Last chunk, remove padding
+              val writeLen = maxOf(0, dec.size - paddingSize)
+              if (writeLen > 0) {
+                output.write(dec, 0, writeLen)
+              }
+            } else {
+              output.write(dec)
+            }
+          }
           rem -= read
         }
+
+        // Read and verify HMAC
         val ourHmac = mac.doFinal()
-        val theirHmac = ByteArray(macLen).also { input.read(it) }
-        if (!ourHmac.contentEquals(theirHmac)) {
-          throw Error("HMAC mismatch: computed=${bytesToHex(ourHmac)} expected=$theirAuth")
+        val theirHmac = ByteArray(macLen)
+        val hmacRead = input.read(theirHmac)
+        if (hmacRead != macLen) {
+          throw IOException("Could not read HMAC from file")
         }
+
+        if (!ourHmac.contentEquals(theirHmac)) {
+          throw SecurityException("HMAC verification failed - file may be corrupted or tampered")
+        }
+
         digest.update(theirHmac)
         val computedAuth = bytesToHex(digest.digest())
         if (computedAuth != theirAuth) {
-          throw Error("Auth digest mismatch: computed=$computedAuth expected=$theirAuth")
+          throw SecurityException("Authentication failed - computed auth does not match expected")
         }
-        cipher.doFinal().takeIf { it.isNotEmpty() }?.let { output.write(it) }
+
+        // Finalize cipher
+        val finalBytes = cipher.doFinal()
+        if (finalBytes.isNotEmpty()) {
+          output.write(finalBytes)
+        }
+
+        Log.d(TAG, "File decryption completed successfully")
       }
     }
   }
