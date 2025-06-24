@@ -17,31 +17,36 @@ public class NitroAes: HybridNitroAesSpec {
   // MARK: - PBKDF2
   public func pbkdf2(password: String, salt: String, cost: Double, length: Double) throws -> Promise<String> {
     return Promise.async {
-      guard !password.isEmpty else { throw RuntimeError.error("Password cannot be empty") }
-      guard !salt.isEmpty else { throw RuntimeError.error("Salt cannot be empty") }
-      guard cost > 0 else { throw RuntimeError.error("Cost must be positive") }
-      guard length > 0 else { throw RuntimeError.error("Length must be positive") }
+      guard !password.isEmpty else { throw RuntimeError.error(withMessage: "Password cannot be empty") }
+      guard !salt.isEmpty else { throw RuntimeError.error(withMessage: "Salt cannot be empty") }
+      guard cost > 0 else { throw RuntimeError.error(withMessage: "Cost must be positive") }
+      guard length > 0 else { throw RuntimeError.error(withMessage: "Length must be positive") }
 
       let passwordData = password.data(using: .utf8)!
       let saltData = salt.data(using: .utf8)!
       var hashKeyData = Data(count: Int(length))
+      let hashKeyCount = hashKeyData.count // Store count before unsafe access
 
-      let status = hashKeyData.withUnsafeMutableBytes { hashKeyBytes in
-        CCKeyDerivationPBKDF(
-          kCCPBKDF2,
-          passwordData.withUnsafeBytes { $0.baseAddress! },
-          passwordData.count,
-          saltData.withUnsafeBytes { $0.baseAddress! },
-          saltData.count,
-          kCCPRFHmacAlgSHA512,
-          UInt32(cost),
-          hashKeyBytes.baseAddress!,
-          hashKeyData.count
-        )
+      let status = passwordData.withUnsafeBytes { passwordBytes in
+        saltData.withUnsafeBytes { saltBytes in
+          hashKeyData.withUnsafeMutableBytes { hashKeyBytes in
+            CCKeyDerivationPBKDF(
+              CCPBKDFAlgorithm(kCCPBKDF2),
+              passwordBytes.baseAddress!,
+              passwordData.count,
+              saltBytes.baseAddress!,
+              saltData.count,
+              CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA512),
+              UInt32(cost),
+              hashKeyBytes.baseAddress!,
+              hashKeyCount
+            )
+          }
+        }
       }
 
       guard status == kCCSuccess else {
-        throw RuntimeError.error("PBKDF2 failed")
+        throw RuntimeError.error(withMessage: "PBKDF2 failed")
       }
 
       return Self.toHex(hashKeyData)
@@ -52,7 +57,7 @@ public class NitroAes: HybridNitroAesSpec {
   public func encrypt(text: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String> {
     return Promise.async {
       guard !text.isEmpty && !key.isEmpty && !iv.isEmpty else {
-        throw RuntimeError.error("Invalid input")
+        throw RuntimeError.error(withMessage: "Invalid input")
       }
 
       try Self.validateHexString(key, name: "key")
@@ -60,7 +65,7 @@ public class NitroAes: HybridNitroAesSpec {
 
       let result = Self.encryptText(clearText: text, key: key, iv: iv, algorithm: algorithm)
       guard let encrypted = result else {
-        throw RuntimeError.error("Encryption failed")
+        throw RuntimeError.error(withMessage: "Encryption failed")
       }
       return encrypted
     }
@@ -69,7 +74,7 @@ public class NitroAes: HybridNitroAesSpec {
   public func decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String> {
     return Promise.async {
       guard !ciphertext.isEmpty && !key.isEmpty && !iv.isEmpty else {
-        throw RuntimeError.error("Invalid input")
+        throw RuntimeError.error(withMessage: "Invalid input")
       }
 
       try Self.validateHexString(key, name: "key")
@@ -77,7 +82,7 @@ public class NitroAes: HybridNitroAesSpec {
 
       let result = Self.decryptText(cipherText: ciphertext, key: key, iv: iv, algorithm: algorithm)
       guard let decrypted = result else {
-        throw RuntimeError.error("Decryption failed")
+        throw RuntimeError.error(withMessage: "Decryption failed")
       }
       return decrypted
     }
@@ -106,7 +111,7 @@ public class NitroAes: HybridNitroAesSpec {
       guard let encryptResult = result,
             let auth = encryptResult["auth"] as? String,
             let paddingSize = encryptResult["paddingSize"] as? NSNumber else {
-        throw RuntimeError.error("Invalid encryption result")
+        throw RuntimeError.error(withMessage: "Invalid encryption result")
       }
 
       return EncryptFileResult(auth: auth, paddingSize: paddingSize.doubleValue)
@@ -141,7 +146,7 @@ public class NitroAes: HybridNitroAesSpec {
           if result == "Success" {
             continuation.resume(returning: "OK")
           } else {
-            continuation.resume(throwing: RuntimeError.error(result))
+            continuation.resume(throwing: RuntimeError.error(withMessage: result))
           }
         }
       }
@@ -187,7 +192,7 @@ public class NitroAes: HybridNitroAesSpec {
     return Promise.async {
       let result = Self.generateRandomKey(length: Int(length))
       guard let key = result else {
-        throw RuntimeError.error("Random key generation failed")
+        throw RuntimeError.error(withMessage: "Random key generation failed")
       }
       return key
     }
@@ -196,15 +201,15 @@ public class NitroAes: HybridNitroAesSpec {
   // MARK: - Private Implementation Methods
   private static func validateHexString(_ hex: String, name: String) throws {
     guard !hex.isEmpty else {
-      throw RuntimeError.error("\(name) cannot be empty")
+      throw RuntimeError.error(withMessage: "\(name) cannot be empty")
     }
     guard hex.count % 2 == 0 else {
-      throw RuntimeError.error("\(name) must have even length")
+      throw RuntimeError.error(withMessage: "\(name) must have even length")
     }
 
     let range = NSRange(location: 0, length: hex.utf16.count)
     guard hexRegex.firstMatch(in: hex, options: [], range: range) != nil else {
-      throw RuntimeError.error("\(name) contains invalid hex characters")
+      throw RuntimeError.error(withMessage: "\(name) contains invalid hex characters")
     }
   }
 
@@ -277,11 +282,12 @@ public class NitroAes: HybridNitroAesSpec {
 
     var buffer = Data(count: data.count + BLOCK_SIZE)
     var numBytes: size_t = 0
+    let bufferCount = buffer.count // Store count before unsafe access
 
-    let cryptStatus = buffer.withUnsafeMutableBytes { bufferBytes in
-      data.withUnsafeBytes { dataBytes in
-        keyData.withUnsafeBytes { keyBytes in
-          ivData.withUnsafeBytes { ivBytes in
+    let cryptStatus = keyData.withUnsafeBytes { keyBytes in
+      ivData.withUnsafeBytes { ivBytes in
+        data.withUnsafeBytes { dataBytes in
+          buffer.withUnsafeMutableBytes { bufferBytes in
             CCCrypt(
               operation == "encrypt" ? CCOperation(kCCEncrypt) : CCOperation(kCCDecrypt),
               CCAlgorithm(kCCAlgorithmAES),
@@ -289,7 +295,7 @@ public class NitroAes: HybridNitroAesSpec {
               keyBytes.baseAddress, keyLength,
               ivData.count > 0 ? ivBytes.baseAddress : nil,
               dataBytes.baseAddress, data.count,
-              bufferBytes.baseAddress, buffer.count,
+              bufferBytes.baseAddress, bufferCount,
               &numBytes
             )
           }
@@ -302,6 +308,7 @@ public class NitroAes: HybridNitroAesSpec {
       return nil
     }
 
+    // Modify count AFTER the unsafe access is complete
     buffer.count = numBytes
     return buffer
   }
@@ -345,11 +352,11 @@ public class NitroAes: HybridNitroAesSpec {
     }
 
     var buffer = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    buffer.withUnsafeMutableBytes { bufferBytes in
+    _ = buffer.withUnsafeMutableBytes { bufferBytes in
       inputData.withUnsafeBytes { inputBytes in
         keyData.withUnsafeBytes { keyBytes in
           CCHmac(
-            kCCHmacAlgSHA256,
+            CCHmacAlgorithm(kCCHmacAlgSHA256),
             keyBytes.baseAddress, keyData.count,
             inputBytes.baseAddress, inputData.count,
             bufferBytes.baseAddress
@@ -367,11 +374,11 @@ public class NitroAes: HybridNitroAesSpec {
     }
 
     var buffer = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    buffer.withUnsafeMutableBytes { bufferBytes in
+    _ = buffer.withUnsafeMutableBytes { bufferBytes in
       inputData.withUnsafeBytes { inputBytes in
         keyData.withUnsafeBytes { keyBytes in
           CCHmac(
-            kCCHmacAlgSHA512,
+            CCHmacAlgorithm(kCCHmacAlgSHA512),
             keyBytes.baseAddress, keyData.count,
             inputBytes.baseAddress, inputData.count,
             bufferBytes.baseAddress
@@ -386,7 +393,7 @@ public class NitroAes: HybridNitroAesSpec {
     guard let inputData = input.data(using: .utf8) else { return "" }
 
     var result = Data(count: Int(CC_SHA1_DIGEST_LENGTH))
-    result.withUnsafeMutableBytes { resultBytes in
+    _ = result.withUnsafeMutableBytes { resultBytes in
       inputData.withUnsafeBytes { inputBytes in
         CC_SHA1(inputBytes.baseAddress, CC_LONG(inputData.count), resultBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
       }
@@ -398,7 +405,7 @@ public class NitroAes: HybridNitroAesSpec {
     guard let inputData = input.data(using: .utf8) else { return "" }
 
     var buffer = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    buffer.withUnsafeMutableBytes { bufferBytes in
+    _ = buffer.withUnsafeMutableBytes { bufferBytes in
       inputData.withUnsafeBytes { inputBytes in
         CC_SHA256(inputBytes.baseAddress, CC_LONG(inputData.count), bufferBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
       }
@@ -410,7 +417,7 @@ public class NitroAes: HybridNitroAesSpec {
     guard let inputData = input.data(using: .utf8) else { return "" }
 
     var buffer = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    buffer.withUnsafeMutableBytes { bufferBytes in
+    _ = buffer.withUnsafeMutableBytes { bufferBytes in
       inputData.withUnsafeBytes { inputBytes in
         CC_SHA512(inputBytes.baseAddress, CC_LONG(inputData.count), bufferBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
       }
@@ -492,8 +499,8 @@ public class NitroAes: HybridNitroAesSpec {
     // Set up cipher for encryption with NoPadding
     var cryptor: CCCryptorRef?
     let status = CCCryptorCreate(
-      kCCEncrypt,
-      kCCAlgorithmAES,
+      CCOperation(kCCEncrypt),
+      CCAlgorithm(kCCAlgorithmAES),
       0, // No padding
       keyData.withUnsafeBytes { $0.baseAddress! },
       keyData.count,
@@ -512,7 +519,7 @@ public class NitroAes: HybridNitroAesSpec {
 
     // Set up MAC
     var hmacContext = CCHmacContext()
-    CCHmacInit(&hmacContext, kCCHmacAlgSHA256, hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
+    CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
 
     let bufferSize = CHUNK_SIZE
     var buffer = Data(count: bufferSize)
@@ -576,7 +583,7 @@ public class NitroAes: HybridNitroAesSpec {
 
         if bytesEncrypted > 0 {
           let encryptedData = encryptedBuffer.prefix(bytesEncrypted)
-          outputStream.write(encryptedData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: bytesEncrypted)
+          _ = outputStream.write(encryptedData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: bytesEncrypted)
 
           encryptedData.withUnsafeBytes { encryptedBytes in
             CCHmacUpdate(&hmacContext, encryptedBytes.baseAddress!, bytesEncrypted)
@@ -596,7 +603,7 @@ public class NitroAes: HybridNitroAesSpec {
 
     if finalBytesEncrypted > 0 {
       let finalData = finalBuffer.prefix(finalBytesEncrypted)
-      outputStream.write(finalData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalBytesEncrypted)
+      _ = outputStream.write(finalData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalBytesEncrypted)
 
       finalData.withUnsafeBytes { finalBytes in
         CCHmacUpdate(&hmacContext, finalBytes.baseAddress!, finalBytesEncrypted)
@@ -614,7 +621,7 @@ public class NitroAes: HybridNitroAesSpec {
     streamDigest.append(finalMac)
 
     // Write the hmacData to encrypted file
-    outputStream.write(finalMac.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalMac.count)
+    _ = outputStream.write(finalMac.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalMac.count)
 
     // Do the hashing for the digest
     var digestData = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
@@ -694,8 +701,8 @@ public class NitroAes: HybridNitroAesSpec {
 
         // Create the cryptor
         let status = CCCryptorCreate(
-          kCCDecrypt,
-          kCCAlgorithmAES,
+          CCOperation(kCCDecrypt),
+          CCAlgorithm(kCCAlgorithmAES),
           0, // No padding
           keyData.withUnsafeBytes { $0.baseAddress! },
           keyData.count,
@@ -709,7 +716,7 @@ public class NitroAes: HybridNitroAesSpec {
 
         // Set up HMAC and SHA-256 contexts
         var hmacContext = CCHmacContext()
-        CCHmacInit(&hmacContext, kCCHmacAlgSHA256, hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
+        CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
 
         var sha256Context = CC_SHA256_CTX()
         CC_SHA256_Init(&sha256Context)
@@ -763,12 +770,12 @@ public class NitroAes: HybridNitroAesSpec {
               if actualLength > paddingSize {
                 let writeLength = actualLength - Int(paddingSize)
                 decryptedBuffer.withUnsafeBytes { decryptedBytes in
-                  output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: writeLength)
+                  _ = output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: writeLength)
                 }
               }
             } else {
               decryptedBuffer.withUnsafeBytes { decryptedBytes in
-                output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: bytesDecrypted)
+                _ = output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: bytesDecrypted)
               }
             }
 
@@ -805,7 +812,7 @@ public class NitroAes: HybridNitroAesSpec {
 
         if finalBytesDecrypted > 0 {
           finalBuffer.withUnsafeBytes { finalBytes in
-            output.write(finalBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: finalBytesDecrypted)
+            _ = output.write(finalBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: finalBytesDecrypted)
           }
         }
 
