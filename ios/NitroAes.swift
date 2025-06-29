@@ -3,88 +3,142 @@ import CommonCrypto
 import NitroModules
 
 public class NitroAes: HybridNitroAesSpec {
-  public override init() { super.init() }
+  public override init() {
+    super.init()
+  }
 
   private static let BLOCK_SIZE = kCCBlockSizeAES128 // 16
   private static let CHUNK_SIZE = 64 * 1024
 
   // Pre-compiled regex for hex validation
-  private static let hexRegex = try! NSRegularExpression(pattern: "^[0-9a-fA-F]+$")
+  private static let hexRegex = try! NSRegularExpression(
+    pattern: "^[0-9a-fA-F]+$"
+  )
 
   // Hex lookup tables for faster conversion
-  private static let hexChars: [Character] = Array("0123456789abcdef")
+  private static let hexChars: [Character] =
+    Array("0123456789abcdef")
 
   // MARK: - PBKDF2
-  public func pbkdf2(password: String, salt: String, cost: Double, length: Double) throws -> Promise<String> {
+  public func pbkdf2(
+    password: String,
+    salt: String,
+    cost: Double,
+    length: Double
+  ) throws -> Promise<String> {
     return Promise.async {
-      guard !password.isEmpty else { throw RuntimeError.error(withMessage: "Password cannot be empty") }
-      guard !salt.isEmpty else { throw RuntimeError.error(withMessage: "Salt cannot be empty") }
-      guard cost > 0 else { throw RuntimeError.error(withMessage: "Cost must be positive") }
-      guard length > 0 else { throw RuntimeError.error(withMessage: "Length must be positive") }
+      guard !password.isEmpty else {
+        throw RuntimeError.error(withMessage:
+                                  "Password cannot be empty")
+      }
+      guard !salt.isEmpty else {
+        throw RuntimeError.error(withMessage:
+                                  "Salt cannot be empty")
+      }
+      guard cost > 0 else {
+        throw RuntimeError.error(withMessage:
+                                  "Cost must be positive")
+      }
+      guard length > 0 else {
+        throw RuntimeError.error(withMessage:
+                                  "Length must be positive")
+      }
 
-      let passwordData = password.data(using: .utf8)!
+      let pwdData = password.data(using: .utf8)!
       let saltData = salt.data(using: .utf8)!
-      var hashKeyData = Data(count: Int(length))
-      let hashKeyCount = hashKeyData.count // Store count before unsafe access
+      var keyData = Data(count: Int(length))
+      let keyLen = keyData.count
 
-      let status = passwordData.withUnsafeBytes { passwordBytes in
-        saltData.withUnsafeBytes { saltBytes in
-          hashKeyData.withUnsafeMutableBytes { hashKeyBytes in
+      let status = pwdData.withUnsafeBytes { pwPtr in
+        saltData.withUnsafeBytes { saltPtr in
+          keyData.withUnsafeMutableBytes { outPtr in
             CCKeyDerivationPBKDF(
               CCPBKDFAlgorithm(kCCPBKDF2),
-              passwordBytes.baseAddress!,
-              passwordData.count,
-              saltBytes.baseAddress!,
+              pwPtr.baseAddress!.assumingMemoryBound(
+                to: Int8.self
+              ),
+              pwdData.count,
+              saltPtr.baseAddress!.assumingMemoryBound(
+                to: UInt8.self
+              ),
               saltData.count,
-              CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA512),
+              CCPseudoRandomAlgorithm(
+                kCCPRFHmacAlgSHA512
+              ),
               UInt32(cost),
-              hashKeyBytes.baseAddress!,
-              hashKeyCount
+              outPtr.baseAddress!.assumingMemoryBound(
+                to: UInt8.self
+              ),
+              keyLen
             )
           }
         }
       }
 
       guard status == kCCSuccess else {
-        throw RuntimeError.error(withMessage: "PBKDF2 failed")
+        throw RuntimeError.error(withMessage:
+                                  "PBKDF2 failed")
       }
-
-      return Self.toHex(hashKeyData)
+      return Self.toHex(keyData)
     }
   }
 
   // MARK: - Text Encryption/Decryption
-  public func encrypt(text: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String> {
+  public func encrypt(
+    text: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ) throws -> Promise<String> {
     return Promise.async {
-      guard !text.isEmpty && !key.isEmpty && !iv.isEmpty else {
-        throw RuntimeError.error(withMessage: "Invalid input")
+      guard !text.isEmpty,
+            !key.isEmpty,
+            !iv.isEmpty else {
+        throw RuntimeError.error(withMessage:
+                                  "Invalid input")
       }
-
       try Self.validateHexString(key, name: "key")
-      try Self.validateHexString(iv, name: "iv")
+      try Self.validateHexString(iv,  name: "iv")
 
-      let result = Self.encryptText(clearText: text, key: key, iv: iv, algorithm: algorithm)
-      guard let encrypted = result else {
-        throw RuntimeError.error(withMessage: "Encryption failed")
+      guard let out = Self.encryptText(
+        clearText: text,
+        key: key,
+        iv: iv,
+        algorithm: algorithm
+      ) else {
+        throw RuntimeError.error(withMessage:
+                                  "Encryption failed")
       }
-      return encrypted
+      return out
     }
   }
 
-  public func decrypt(ciphertext: String, key: String, iv: String, algorithm: Algorithms) throws -> Promise<String> {
+  public func decrypt(
+    ciphertext: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ) throws -> Promise<String> {
     return Promise.async {
-      guard !ciphertext.isEmpty && !key.isEmpty && !iv.isEmpty else {
-        throw RuntimeError.error(withMessage: "Invalid input")
+      guard !ciphertext.isEmpty,
+            !key.isEmpty,
+            !iv.isEmpty else {
+        throw RuntimeError.error(withMessage:
+                                  "Invalid input")
       }
-
       try Self.validateHexString(key, name: "key")
-      try Self.validateHexString(iv, name: "iv")
+      try Self.validateHexString(iv,  name: "iv")
 
-      let result = Self.decryptText(cipherText: ciphertext, key: key, iv: iv, algorithm: algorithm)
-      guard let decrypted = result else {
-        throw RuntimeError.error(withMessage: "Decryption failed")
+      guard let out = Self.decryptText(
+        cipherText: ciphertext,
+        key: key,
+        iv: iv,
+        algorithm: algorithm
+      ) else {
+        throw RuntimeError.error(withMessage:
+                                  "Decryption failed")
       }
-      return decrypted
+      return out
     }
   }
 
@@ -96,25 +150,27 @@ public class NitroAes: HybridNitroAesSpec {
     outputPath: String
   ) throws -> Promise<EncryptFileResult> {
     return Promise.async {
-      try Self.validateHexString(key, name: "key")
-      try Self.validateHexString(iv, name: "iv")
-      try Self.validateHexString(hmacKey, name: "hmacKey")
+      try Self.validateHexString(key,    name: "key")
+      try Self.validateHexString(iv,     name: "iv")
+      try Self.validateHexString(hmacKey,name: "hmacKey")
 
-      let result = Self.performFileEncryption(
-        hexKey: key,
-        iv: iv,
-        hmacKey: hmacKey,
+      guard let result = Self.performFileEncryption(
+        hexKey:    key,
+        iv:        iv,
+        hmacKey:   hmacKey,
         inputPath: inputPath,
         outputPath: outputPath
-      )
-
-      guard let encryptResult = result,
-            let auth = encryptResult["auth"] as? String,
-            let paddingSize = encryptResult["paddingSize"] as? NSNumber else {
-        throw RuntimeError.error(withMessage: "Invalid encryption result")
+      ),
+      let auth = result["auth"] as? String,
+      let pad  = result["paddingSize"] as? NSNumber
+      else {
+        throw RuntimeError.error(withMessage:
+                                  "File encryption failed")
       }
-
-      return EncryptFileResult(auth: auth, paddingSize: paddingSize.doubleValue)
+      return EncryptFileResult(
+        auth: auth,
+        paddingSize: pad.doubleValue
+      )
     }
   }
 
@@ -128,25 +184,29 @@ public class NitroAes: HybridNitroAesSpec {
     paddingSize: Double
   ) throws -> Promise<String> {
     return Promise.async {
-      try Self.validateHexString(key, name: "key")
-      try Self.validateHexString(iv, name: "iv")
-      try Self.validateHexString(hmacKey, name: "hmacKey")
-      try Self.validateHexString(auth, name: "auth")
+      try Self.validateHexString(key,    name: "key")
+      try Self.validateHexString(iv,     name: "iv")
+      try Self.validateHexString(hmacKey,name: "hmacKey")
+      try Self.validateHexString(auth,   name: "auth")
 
-      return try await withCheckedThrowingContinuation { continuation in
+      return try await withCheckedThrowingContinuation { cont in
         Self.performFileDecryption(
-          hexKey: key,
-          iv: iv,
-          hmacKey: hmacKey,
-          digest: auth,
-          inputPath: inputPath,
-          outputPath: outputPath,
+          hexKey:      key,
+          iv:          iv,
+          hmacKey:     hmacKey,
+          digest:      auth,
+          inputPath:   inputPath,
+          outputPath:  outputPath,
           paddingSize: UInt(paddingSize)
         ) { result in
           if result == "Success" {
-            continuation.resume(returning: "OK")
+            cont.resume(returning: "OK")
           } else {
-            continuation.resume(throwing: RuntimeError.error(withMessage: result))
+            cont.resume(
+              throwing: RuntimeError.error(
+                withMessage: result
+              )
+            )
           }
         }
       }
@@ -154,17 +214,25 @@ public class NitroAes: HybridNitroAesSpec {
   }
 
   // MARK: - HMAC
-  public func hmac256(ciphertext: String, key: String) throws -> Promise<String> {
+  public func hmac256(
+    ciphertext: String,
+    key: String
+  ) throws -> Promise<String> {
     return Promise.async {
       try Self.validateHexString(key, name: "key")
-      return Self.computeHMAC256(input: ciphertext, key: key)
+      return Self.computeHMAC256(input: ciphertext,
+                                 key: key)
     }
   }
 
-  public func hmac512(ciphertext: String, key: String) throws -> Promise<String> {
+  public func hmac512(
+    ciphertext: String,
+    key: String
+  ) throws -> Promise<String> {
     return Promise.async {
       try Self.validateHexString(key, name: "key")
-      return Self.computeHMAC512(input: ciphertext, key: key)
+      return Self.computeHMAC512(input: ciphertext,
+                                 key: key)
     }
   }
 
@@ -174,13 +242,11 @@ public class NitroAes: HybridNitroAesSpec {
       return Self.computeSHA1(input: text)
     }
   }
-
   public func sha256(text: String) throws -> Promise<String> {
     return Promise.async {
       return Self.computeSHA256(input: text)
     }
   }
-
   public func sha512(text: String) throws -> Promise<String> {
     return Promise.async {
       return Self.computeSHA512(input: text)
@@ -188,69 +254,92 @@ public class NitroAes: HybridNitroAesSpec {
   }
 
   // MARK: - Random Generation
-  public func randomKey(length: Double) throws -> Promise<String> {
+  public func randomKey(length: Double) throws ->
+    Promise<String> {
     return Promise.async {
-      let result = Self.generateRandomKey(length: Int(length))
-      guard let key = result else {
-        throw RuntimeError.error(withMessage: "Random key generation failed")
+      let rnd = Self.generateRandomKey(
+        length: Int(length)
+      )
+      guard let key = rnd else {
+        throw RuntimeError.error(
+          withMessage: "Random key generation failed"
+        )
       }
       return key
     }
   }
 
-  // MARK: - Private Implementation Methods
-  private static func validateHexString(_ hex: String, name: String) throws {
+  // MARK: - Utilities
+  private static func validateHexString(
+    _ hex: String,
+    name: String
+  ) throws {
     guard !hex.isEmpty else {
-      throw RuntimeError.error(withMessage: "\(name) cannot be empty")
+      throw RuntimeError.error(withMessage:
+                                "\(name) cannot be empty")
     }
     guard hex.count % 2 == 0 else {
-      throw RuntimeError.error(withMessage: "\(name) must have even length")
+      throw RuntimeError.error(withMessage:
+                                "\(name) must have even length")
     }
-
-    let range = NSRange(location: 0, length: hex.utf16.count)
-    guard hexRegex.firstMatch(in: hex, options: [], range: range) != nil else {
-      throw RuntimeError.error(withMessage: "\(name) contains invalid hex characters")
+    let range = NSRange(location: 0,
+                        length: hex.utf16.count)
+    guard hexRegex.firstMatch(in: hex,
+                               options: [],
+                               range: range) != nil else {
+      throw RuntimeError.error(withMessage:
+                                "\(name) contains invalid hex")
     }
   }
 
-  // Optimized hex conversion using lookup tables
   private static func toHex(_ data: Data) -> String {
-    var result = ""
-    result.reserveCapacity(data.count * 2)
-
-    for byte in data {
-      result.append(hexChars[Int(byte >> 4)])
-      result.append(hexChars[Int(byte & 0x0F)])
+    var s = ""
+    s.reserveCapacity(data.count * 2)
+    for b in data {
+      s.append(hexChars[Int(b >> 4)])
+      s.append(hexChars[Int(b & 0x0F)])
     }
-    return result
+    return s
   }
 
-  private static func fromHex(_ string: String) -> Data? {
-    guard !string.isEmpty, string.count % 2 == 0 else { return nil }
-
-    var data = Data()
-    data.reserveCapacity(string.count / 2)
-
-    var index = string.startIndex
-    while index < string.endIndex {
-      let nextIndex = string.index(index, offsetBy: 2)
-      let byteString = string[index..<nextIndex]
-
-      guard let byte = UInt8(byteString, radix: 16) else { return nil }
-      data.append(byte)
-      index = nextIndex
+  private static func fromHex(_ str: String) -> Data? {
+    guard !str.isEmpty, str.count % 2 == 0 else {
+      return nil
     }
-    return data
+    var d = Data()
+    d.reserveCapacity(str.count/2)
+    var idx = str.startIndex
+    while idx < str.endIndex {
+      let nxt = str.index(idx, offsetBy: 2)
+      let byteStr = str[idx..<nxt]
+      guard let b = UInt8(byteStr, radix: 16) else {
+        return nil
+      }
+      d.append(b)
+      idx = nxt
+    }
+    return d
   }
 
-  private static func getAlgorithmKeySize(_ algorithm: Algorithms) -> size_t {
-    switch algorithm {
-    case .aes128Cbc:
-      return kCCKeySizeAES128
-    case .aes192Cbc:
-      return kCCKeySizeAES192
-    case .aes256Cbc:
-      return kCCKeySizeAES256
+  private static func getFileSizeAtPath(
+    _ path: String
+  ) -> UInt {
+    let fm = FileManager.default
+    guard let attr = try? fm.attributesOfItem(
+            atPath: path),
+          let size = attr[.size] as? NSNumber
+    else { return 0 }
+    return size.uintValue
+  }
+
+  // MARK: - CBC Core for text
+  private static func getAlgorithmKeySize(
+    _ alg: Algorithms
+  ) -> size_t {
+    switch alg {
+    case .aes128Cbc: return kCCKeySizeAES128
+    case .aes192Cbc: return kCCKeySizeAES192
+    case .aes256Cbc: return kCCKeySizeAES256
     }
   }
 
@@ -261,384 +350,368 @@ public class NitroAes: HybridNitroAesSpec {
     iv: String,
     algorithm: Algorithms
   ) -> Data? {
-    guard let keyData = fromHex(key),
-          let ivData = fromHex(iv) else {
+    guard let k = fromHex(key),
+          let v = fromHex(iv) else {
+      return nil
+    }
+    let keyLen = getAlgorithmKeySize(algorithm)
+    guard k.count == keyLen else {
+      print("Key must be \(keyLen*8) bits")
+      return nil
+    }
+    guard v.count == BLOCK_SIZE else {
+      print("IV must be 128 bits")
       return nil
     }
 
-    let keyLength = getAlgorithmKeySize(algorithm)
-
-    // Validate key size
-    guard keyData.count == keyLength else {
-      print("Key must be \(keyLength * 8) bits for \(algorithm)")
-      return nil
-    }
-
-    // Validate IV size
-    guard ivData.count == BLOCK_SIZE else {
-      print("IV must be 128 bits (32 hex characters)")
-      return nil
-    }
-
-    var buffer = Data(count: data.count + BLOCK_SIZE)
-    var numBytes: size_t = 0
-    let bufferCount = buffer.count // Store count before unsafe access
-
-    let cryptStatus = keyData.withUnsafeBytes { keyBytes in
-      ivData.withUnsafeBytes { ivBytes in
-        data.withUnsafeBytes { dataBytes in
-          buffer.withUnsafeMutableBytes { bufferBytes in
+    var buf = Data(count: data.count+BLOCK_SIZE)
+    var outN: size_t = 0
+    let st = k.withUnsafeBytes { kPtr in
+      v.withUnsafeBytes { ivPtr in
+        data.withUnsafeBytes { dPtr in
+          buf.withUnsafeMutableBytes { bPtr in
             CCCrypt(
-              operation == "encrypt" ? CCOperation(kCCEncrypt) : CCOperation(kCCDecrypt),
+              operation=="encrypt"
+                ? CCOperation(kCCEncrypt)
+                : CCOperation(kCCDecrypt),
               CCAlgorithm(kCCAlgorithmAES),
               CCOptions(kCCOptionPKCS7Padding),
-              keyBytes.baseAddress, keyLength,
-              ivData.count > 0 ? ivBytes.baseAddress : nil,
-              dataBytes.baseAddress, data.count,
-              bufferBytes.baseAddress, bufferCount,
-              &numBytes
+              kPtr.baseAddress,
+              keyLen,
+              ivPtr.baseAddress,
+              dPtr.baseAddress,
+              data.count,
+              bPtr.baseAddress,
+              buf.count,
+              &outN
             )
           }
         }
       }
     }
-
-    guard cryptStatus == kCCSuccess else {
-      print("AES error: \(cryptStatus)")
+    guard st == kCCSuccess else {
+      print("AES error: \(st)")
       return nil
     }
-
-    // Modify count AFTER the unsafe access is complete
-    buffer.count = numBytes
-    return buffer
+    buf.count = outN
+    return buf
   }
 
-  private static func encryptText(clearText: String, key: String, iv: String, algorithm: Algorithms) -> String? {
-    guard !clearText.isEmpty && !key.isEmpty && !iv.isEmpty else {
-      print("Encryption failed due to invalid input")
+  private static func encryptText(
+    clearText: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ) -> String? {
+    guard let d = clearText.data(using: .utf8) else {
       return nil
     }
-
-    guard let data = clearText.data(using: .utf8) else { return nil }
-
-    let result = performAESCBC(operation: "encrypt", data: data, key: key, iv: iv, algorithm: algorithm)
-    guard let encryptedData = result else {
-      print("Encryption failed")
-      return nil
-    }
-
-    return encryptedData.base64EncodedString()
+    guard let enc = performAESCBC(
+      operation: "encrypt",
+      data: d,
+      key: key,
+      iv: iv,
+      algorithm: algorithm
+    ) else { return nil }
+    return enc.base64EncodedString()
   }
 
-  private static func decryptText(cipherText: String, key: String, iv: String, algorithm: Algorithms) -> String? {
-    guard !cipherText.isEmpty && !key.isEmpty && !iv.isEmpty else {
+  private static func decryptText(
+    cipherText: String,
+    key: String,
+    iv: String,
+    algorithm: Algorithms
+  ) -> String? {
+    guard let d = Data(base64Encoded: cipherText) else {
       return nil
     }
-
-    guard let data = Data(base64Encoded: cipherText) else { return nil }
-
-    let result = performAESCBC(operation: "decrypt", data: data, key: key, iv: iv, algorithm: algorithm)
-    guard let decryptedData = result else {
-      return nil
-    }
-
-    return String(data: decryptedData, encoding: .utf8)
+    guard let dec = performAESCBC(
+      operation: "decrypt",
+      data: d,
+      key: key,
+      iv: iv,
+      algorithm: algorithm
+    ) else { return nil }
+    return String(data: dec, encoding: .utf8)
   }
 
-  private static func computeHMAC256(input: String, key: String) -> String {
-    guard let keyData = fromHex(key),
-          let inputData = input.data(using: .utf8) else {
+  // MARK: - HMAC & Hash
+  private static func computeHMAC256(
+    input: String,
+    key: String
+  ) -> String {
+    guard let k = fromHex(key),
+          let d = input.data(using: .utf8) else {
       return ""
     }
-
-    var buffer = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    _ = buffer.withUnsafeMutableBytes { bufferBytes in
-      inputData.withUnsafeBytes { inputBytes in
-        keyData.withUnsafeBytes { keyBytes in
+    var buf = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
+    buf.withUnsafeMutableBytes { bPtr in
+      d.withUnsafeBytes { dPtr in
+        k.withUnsafeBytes { kPtr in
           CCHmac(
             CCHmacAlgorithm(kCCHmacAlgSHA256),
-            keyBytes.baseAddress, keyData.count,
-            inputBytes.baseAddress, inputData.count,
-            bufferBytes.baseAddress
+            kPtr.baseAddress,
+            k.count,
+            dPtr.baseAddress,
+            d.count,
+            bPtr.baseAddress
           )
         }
       }
     }
-    return toHex(buffer)
+    return toHex(buf)
   }
 
-  private static func computeHMAC512(input: String, key: String) -> String {
-    guard let keyData = fromHex(key),
-          let inputData = input.data(using: .utf8) else {
+  private static func computeHMAC512(
+    input: String,
+    key: String
+  ) -> String {
+    guard let k = fromHex(key),
+          let d = input.data(using: .utf8) else {
       return ""
     }
-
-    var buffer = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    _ = buffer.withUnsafeMutableBytes { bufferBytes in
-      inputData.withUnsafeBytes { inputBytes in
-        keyData.withUnsafeBytes { keyBytes in
+    var buf = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
+    buf.withUnsafeMutableBytes { bPtr in
+      d.withUnsafeBytes { dPtr in
+        k.withUnsafeBytes { kPtr in
           CCHmac(
             CCHmacAlgorithm(kCCHmacAlgSHA512),
-            keyBytes.baseAddress, keyData.count,
-            inputBytes.baseAddress, inputData.count,
-            bufferBytes.baseAddress
+            kPtr.baseAddress,
+            k.count,
+            dPtr.baseAddress,
+            d.count,
+            bPtr.baseAddress
           )
         }
       }
     }
-    return toHex(buffer)
+    return toHex(buf)
   }
 
   private static func computeSHA1(input: String) -> String {
-    guard let inputData = input.data(using: .utf8) else { return "" }
-
-    var result = Data(count: Int(CC_SHA1_DIGEST_LENGTH))
-    _ = result.withUnsafeMutableBytes { resultBytes in
-      inputData.withUnsafeBytes { inputBytes in
-        CC_SHA1(inputBytes.baseAddress, CC_LONG(inputData.count), resultBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
+    guard let d = input.data(using: .utf8) else {
+      return ""
+    }
+    var buf = Data(count: Int(CC_SHA1_DIGEST_LENGTH))
+    buf.withUnsafeMutableBytes { bPtr in
+      d.withUnsafeBytes { dPtr in
+        CC_SHA1(dPtr.baseAddress,
+                CC_LONG(d.count),
+                bPtr.baseAddress!
+                  .assumingMemoryBound(to: UInt8.self))
       }
     }
-    return toHex(result)
+    return toHex(buf)
   }
 
   private static func computeSHA256(input: String) -> String {
-    guard let inputData = input.data(using: .utf8) else { return "" }
-
-    var buffer = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    _ = buffer.withUnsafeMutableBytes { bufferBytes in
-      inputData.withUnsafeBytes { inputBytes in
-        CC_SHA256(inputBytes.baseAddress, CC_LONG(inputData.count), bufferBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
+    guard let d = input.data(using: .utf8) else {
+      return ""
+    }
+    var buf = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
+    buf.withUnsafeMutableBytes { bPtr in
+      d.withUnsafeBytes { dPtr in
+        CC_SHA256(dPtr.baseAddress,
+                  CC_LONG(d.count),
+                  bPtr.baseAddress!
+                    .assumingMemoryBound(to: UInt8.self))
       }
     }
-    return toHex(buffer)
+    return toHex(buf)
   }
 
   private static func computeSHA512(input: String) -> String {
-    guard let inputData = input.data(using: .utf8) else { return "" }
-
-    var buffer = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    _ = buffer.withUnsafeMutableBytes { bufferBytes in
-      inputData.withUnsafeBytes { inputBytes in
-        CC_SHA512(inputBytes.baseAddress, CC_LONG(inputData.count), bufferBytes.baseAddress?.assumingMemoryBound(to: UInt8.self))
+    guard let d = input.data(using: .utf8) else {
+      return ""
+    }
+    var buf = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
+    buf.withUnsafeMutableBytes { bPtr in
+      d.withUnsafeBytes { dPtr in
+        CC_SHA512(dPtr.baseAddress,
+                  CC_LONG(d.count),
+                  bPtr.baseAddress!
+                    .assumingMemoryBound(to: UInt8.self))
       }
     }
-    return toHex(buffer)
+    return toHex(buf)
   }
 
-  private static func generateRandomKey(length: Int) -> String? {
+  private static func generateRandomKey(
+    length: Int
+  ) -> String? {
     var data = Data(count: length)
-    let result = data.withUnsafeMutableBytes {
-      SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
+    let res = data.withUnsafeMutableBytes {
+      SecRandomCopyBytes(kSecRandomDefault,
+                         length,
+                         $0.baseAddress!)
     }
-    guard result == errSecSuccess else { return nil }
+    guard res == errSecSuccess else { return nil }
     return toHex(data)
   }
 
-  private static func getFileSizeAtPath(_ filePath: String) -> UInt {
-    let fileManager = FileManager.default
-    guard let attributes = try? fileManager.attributesOfItem(atPath: filePath),
-          let fileSize = attributes[.size] as? NSNumber else {
-      return 0
-    }
-    return fileSize.uintValue
-  }
-
-  // MARK: - File Operations Implementation
-
+  // MARK: - File Encryption
   private static func performFileEncryption(
     hexKey: String,
     iv: String,
     hmacKey: String,
     inputPath: String,
     outputPath: String
-  ) -> [String: Any]? {
-    let fileManager = FileManager.default
-    guard let keyData = fromHex(hexKey),
+  ) -> [String:Any]? {
+    let fm = FileManager.default
+    guard let kData = fromHex(hexKey),
           let ivData = fromHex(iv),
-          let hmacKeyData = fromHex(hmacKey) else {
-      print("Failed to convert hex keys to data")
+          let hData = fromHex(hmacKey) else {
+      print("Hex conversion failed")
       return nil
     }
-
-    // Validate key sizes
-    guard keyData.count == 32 else {
-      print("Key must be 256 bits")
-      return nil
+    guard kData.count == 32 else {
+      print("Key must be 256 bits"); return nil
     }
     guard ivData.count == BLOCK_SIZE else {
-      print("IV must be 128 bits")
-      return nil
+      print("IV must be 128 bits"); return nil
     }
-    guard hmacKeyData.count == 32 else {
-      print("HMAC key must be 256 bits")
-      return nil
+    guard hData.count == 32 else {
+      print("HMAC key must be 256 bits"); return nil
     }
-
-    guard fileManager.fileExists(atPath: inputPath) else {
-      print("Input file doesn't exist.")
-      return nil
+    guard fm.fileExists(atPath: inputPath) else {
+      print("Input file missing"); return nil
     }
-
-    guard let inputStream = InputStream(fileAtPath: inputPath),
-          let outputStream = OutputStream(toFileAtPath: outputPath, append: false) else {
-      print("Failed to open input or output stream.")
-      return nil
+    guard let inStream = InputStream(fileAtPath: inputPath),
+          let outStream = OutputStream(
+            toFileAtPath: outputPath,
+            append: false
+          ) else {
+      print("Stream open failed"); return nil
     }
+    inStream.open(); defer{inStream.close()}
+    outStream.open(); defer{outStream.close()}
 
-    inputStream.open()
-    outputStream.open()
-
-    defer {
-      inputStream.close()
-      outputStream.close()
-    }
-
-    // Calculate file size
-    let fileSize = getFileSizeAtPath(inputPath)
-
-    // Set up cipher for encryption with NoPadding
-    var cryptor: CCCryptorRef?
-    let status = CCCryptorCreate(
+    var cryptorRef: CCCryptorRef?
+    let cRes = CCCryptorCreate(
       CCOperation(kCCEncrypt),
       CCAlgorithm(kCCAlgorithmAES),
-      0, // No padding
-      keyData.withUnsafeBytes { $0.baseAddress! },
-      keyData.count,
-      ivData.withUnsafeBytes { $0.baseAddress! },
-      &cryptor
+      CCOptions(0),
+      kData.withUnsafeBytes{ $0.baseAddress },
+      kData.count,
+      ivData.withUnsafeBytes{ $0.baseAddress },
+      &cryptorRef
     )
-
-    guard status == kCCSuccess, let encryptor = cryptor else {
-      print("Failed to create cryptor: \(status)")
-      return nil
+    guard cRes == kCCSuccess,
+          let encryptor = cryptorRef else {
+      print("Encryptor create error \(cRes)"); return nil
     }
+    defer{CCCryptorRelease(encryptor)}
 
-    defer {
-      CCCryptorRelease(encryptor)
-    }
+    var hCtx = CCHmacContext()
+    CCHmacInit(&hCtx,
+               CCHmacAlgorithm(kCCHmacAlgSHA256),
+               hData.withUnsafeBytes{ $0.baseAddress },
+               hData.count)
 
-    // Set up MAC
-    var hmacContext = CCHmacContext()
-    CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
+    let fileSize = getFileSizeAtPath(inputPath)
+    let padSize = Int((UInt(BLOCK_SIZE) -
+                   (fileSize % UInt(BLOCK_SIZE))) %
+                   UInt(BLOCK_SIZE))
+    let chunk = CHUNK_SIZE
+    var buf = Data(count: chunk)
+    var total: UInt = 0
+    var digestBuf = Data()
 
-    let bufferSize = CHUNK_SIZE
-    var buffer = Data(count: bufferSize)
-    var totalBytesRead: UInt = 0
-    var streamDigest = Data()
-
-    // Calculate padding size
-    let isMultipleOfBlockSize = fileSize % 16 == 0
-    let paddingSize = isMultipleOfBlockSize ? 0 : (16 - (fileSize % 16))
-
-    // Read data from the input file, encrypt it, and write to the output file
     while true {
-      autoreleasepool {
-        let bytesRead = buffer.withUnsafeMutableBytes { bufferBytes in
-          inputStream.read(bufferBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: bufferSize)
-        }
+      let read = buf.withUnsafeMutableBytes{ ptr in
+        inStream.read(ptr.baseAddress!
+                      .assumingMemoryBound(to: UInt8.self),
+                      maxLength: chunk)
+      }
+      guard read > 0 else { break }
+      total += UInt(read)
+      let isLast = (total == fileSize)
 
-        guard bytesRead > 0 else { return }
+      var chunkData = buf.prefix(read)
+      if isLast && padSize > 0 {
+        chunkData.append(Data(repeating: UInt8(padSize),
+                              count: padSize))
+      }
 
-        totalBytesRead += UInt(bytesRead)
-        let isLastChunk = (totalBytesRead == fileSize)
-
-        var actualBytesToEncrypt = bytesRead
-
-        if isLastChunk && paddingSize > 0 {
-          // Ensure there's enough space for adding the padding
-          if bytesRead + Int(paddingSize) <= bufferSize {
-            buffer.withUnsafeMutableBytes { bufferBytes in
-              let bytes = bufferBytes.baseAddress!.assumingMemoryBound(to: UInt8.self)
-              for i in 0..<paddingSize {
-                bytes[bytesRead + Int(i)] = UInt8(paddingSize)
-              }
-            }
-            actualBytesToEncrypt += Int(paddingSize)
-          } else {
-            print("Buffer overflow: Cannot add padding, buffer too small")
-            return
-          }
-        }
-
-        var encryptedBuffer = Data(count: bufferSize)
-        var bytesEncrypted: size_t = 0
-
-        let encryptStatus = encryptedBuffer.withUnsafeMutableBytes { encryptedBytes in
-          buffer.withUnsafeBytes { inputBytes in
-            CCCryptorUpdate(
-              encryptor,
-              inputBytes.baseAddress!,
-              actualBytesToEncrypt,
-              encryptedBytes.baseAddress!,
-              bufferSize,
-              &bytesEncrypted
-            )
-          }
-        }
-
-        guard encryptStatus == kCCSuccess else {
-          print("Failed to encrypt data: \(encryptStatus)")
-          return
-        }
-
-        if bytesEncrypted > 0 {
-          let encryptedData = encryptedBuffer.prefix(bytesEncrypted)
-          _ = outputStream.write(encryptedData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: bytesEncrypted)
-
-          encryptedData.withUnsafeBytes { encryptedBytes in
-            CCHmacUpdate(&hmacContext, encryptedBytes.baseAddress!, bytesEncrypted)
-          }
-          streamDigest.append(encryptedData)
+      var encBuf = Data(count: chunkData.count+BLOCK_SIZE)
+      var outLen: size_t = 0
+      let uRes = encBuf.withUnsafeMutableBytes{ ePtr in
+        chunkData.withUnsafeBytes{ cPtr in
+          CCCryptorUpdate(encryptor,
+                          cPtr.baseAddress,
+                          cPtr.count,
+                          ePtr.baseAddress,
+                          ePtr.count,
+                          &outLen)
         }
       }
-    }
-
-    // Finalize encryption
-    var finalBuffer = Data(count: bufferSize)
-    var finalBytesEncrypted: size_t = 0
-
-    finalBuffer.withUnsafeMutableBytes { finalBytes in
-      CCCryptorFinal(encryptor, finalBytes.baseAddress!, bufferSize, &finalBytesEncrypted)
-    }
-
-    if finalBytesEncrypted > 0 {
-      let finalData = finalBuffer.prefix(finalBytesEncrypted)
-      _ = outputStream.write(finalData.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalBytesEncrypted)
-
-      finalData.withUnsafeBytes { finalBytes in
-        CCHmacUpdate(&hmacContext, finalBytes.baseAddress!, finalBytesEncrypted)
+      guard uRes == kCCSuccess else {
+        print("Encrypt update error \(uRes)"); return nil
       }
-      streamDigest.append(finalData)
+      let outData = encBuf.prefix(outLen)
+      _ = outData.withUnsafeBytes{ ptr in
+        outStream.write(ptr.baseAddress!
+                        .assumingMemoryBound(to: UInt8.self),
+                        maxLength: outData.count)
+      }
+      CCHmacUpdate(&hCtx,
+                   outData.withUnsafeBytes{ $0.baseAddress },
+                   outData.count)
+      digestBuf.append(outData)
     }
 
-    // Generate MAC digest
-    var finalMac = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    finalMac.withUnsafeMutableBytes { macBytes in
-      CCHmacFinal(&hmacContext, macBytes.baseAddress!)
+    var finBuf = Data(count: BLOCK_SIZE)
+    var finLen: size_t = 0
+    let fRes = finBuf.withUnsafeMutableBytes{ fPtr in
+      CCCryptorFinal(encryptor,
+                     fPtr.baseAddress,
+                     fPtr.count,
+                     &finLen)
+    }
+    if fRes==kCCSuccess && finLen>0 {
+      let fData = finBuf.prefix(finLen)
+      _ = fData.withUnsafeBytes{ ptr in
+        outStream.write(ptr.baseAddress!
+                        .assumingMemoryBound(
+                          to: UInt8.self),
+                        maxLength: fData.count)
+      }
+      CCHmacUpdate(&hCtx,
+                   fData.withUnsafeBytes{ $0.baseAddress },
+                   fData.count)
+      digestBuf.append(fData)
     }
 
-    // Append finalMac to streamDigest
-    streamDigest.append(finalMac)
+    var macBuf = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
+    CCHmacFinal(&hCtx,
+                macBuf.withUnsafeMutableBytes{ $0.baseAddress })
+    _ = macBuf.withUnsafeBytes{ ptr in
+      outStream.write(ptr.baseAddress!
+                      .assumingMemoryBound(
+                        to: UInt8.self),
+                      maxLength: ptr.count)
+    }
+    digestBuf.append(macBuf)
 
-    // Write the hmacData to encrypted file
-    _ = outputStream.write(finalMac.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) }, maxLength: finalMac.count)
-
-    // Do the hashing for the digest
-    var digestData = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    digestData.withUnsafeMutableBytes { digestBytes in
-      streamDigest.withUnsafeBytes { streamBytes in
-        CC_SHA256(streamBytes.baseAddress!, CC_LONG(streamDigest.count), digestBytes.baseAddress!.assumingMemoryBound(to: UInt8.self))
+    var authBuf =
+      Data(count: Int(CC_SHA256_DIGEST_LENGTH))
+    authBuf.withUnsafeMutableBytes{ aPtr in
+      digestBuf.withUnsafeBytes{ dPtr in
+        CC_SHA256(dPtr.baseAddress,
+                  CC_LONG(digestBuf.count),
+                  aPtr.baseAddress!
+                    .assumingMemoryBound(
+                      to: UInt8.self))
       }
     }
-
-    // Create result dictionary
-    let auth = toHex(digestData)
+    let authHex = toHex(authBuf)
     return [
-      "auth": auth,
-      "paddingSize": NSNumber(value: paddingSize)
+      "auth": authHex,
+      "paddingSize": NSNumber(value: padSize)
     ]
   }
 
+  // MARK: - File Decryption
   private static func performFileDecryption(
     hexKey: String,
     iv: String,
@@ -647,178 +720,202 @@ public class NitroAes: HybridNitroAesSpec {
     inputPath: String,
     outputPath: String,
     paddingSize: UInt,
-    completion: @escaping (String) -> Void
+    completion: @escaping (String)->Void
   ) {
     DispatchQueue.global(qos: .userInitiated).async {
-      var inputStream: InputStream?
-      var outputStream: OutputStream?
-      var cryptor: CCCryptorRef?
+      var iStream: InputStream?
+      var oStream: OutputStream?
+      var cryptorRef: CCCryptorRef?
 
       defer {
-        inputStream?.close()
-        outputStream?.close()
-        if let cryptor = cryptor {
-          CCCryptorRelease(cryptor)
+        iStream?.close()
+        oStream?.close()
+        if let r = cryptorRef {
+          CCCryptorRelease(r)
         }
       }
 
       do {
-        // Convert hex strings to data
-        guard let keyData = fromHex(hexKey),
+        guard let kData = fromHex(hexKey),
               let ivData = fromHex(iv),
-              let hmacKeyData = fromHex(hmacKey) else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid input parameters!"])
+              let hData = fromHex(hmacKey) else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Invalid hex params"])
+        }
+        guard kData.count==32 else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Key must be 256 bits"])
+        }
+        guard ivData.count==BLOCK_SIZE else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "IV must be 128 bits"])
+        }
+        guard hData.count==32 else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "HMAC key must be 256 bits"])
+        }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: inputPath) else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Input file missing"])
+        }
+        guard let ins = InputStream(fileAtPath: inputPath),
+              let ous = OutputStream(
+                toFileAtPath: outputPath,
+                append: false
+              ) else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Stream open failed"])
+        }
+        iStream = ins; oStream = ous
+        ins.open(); ous.open()
+        guard ins.streamStatus == .open,
+              ous.streamStatus == .open else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Stream not open"])
         }
 
-        // Validate key sizes
-        guard keyData.count == 32 else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Key must be 256 bits"])
-        }
-        guard ivData.count == BLOCK_SIZE else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "IV must be 128 bits"])
-        }
-        guard hmacKeyData.count == 32 else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "HMAC key must be 256 bits"])
-        }
-
-        // Validate file existence
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: inputPath) else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Input file does not exist."])
-        }
-
-        // Open streams
-        inputStream = InputStream(fileAtPath: inputPath)
-        outputStream = OutputStream(toFileAtPath: outputPath, append: false)
-        inputStream?.open()
-        outputStream?.open()
-
-        // Check stream readiness
-        guard let input = inputStream, let output = outputStream,
-              input.streamStatus == .open, output.streamStatus == .open else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Stream failure!"])
-        }
-
-        // Create the cryptor
-        let status = CCCryptorCreate(
+        let cRes = CCCryptorCreate(
           CCOperation(kCCDecrypt),
           CCAlgorithm(kCCAlgorithmAES),
-          0, // No padding
-          keyData.withUnsafeBytes { $0.baseAddress! },
-          keyData.count,
-          ivData.withUnsafeBytes { $0.baseAddress! },
-          &cryptor
+          CCOptions(0),
+          kData.withUnsafeBytes{ $0.baseAddress },
+          kData.count,
+          ivData.withUnsafeBytes{ $0.baseAddress },
+          &cryptorRef
         )
-
-        guard status == kCCSuccess, let decryptor = cryptor else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create cryptor"])
+        guard cRes==kCCSuccess,
+              let decryptor=cryptorRef else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "Decryptor create failed"])
         }
 
-        // Set up HMAC and SHA-256 contexts
-        var hmacContext = CCHmacContext()
-        CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), hmacKeyData.withUnsafeBytes { $0.baseAddress! }, hmacKeyData.count)
+        var hCtx = CCHmacContext()
+        CCHmacInit(&hCtx,
+                   CCHmacAlgorithm(kCCHmacAlgSHA256),
+                   hData.withUnsafeBytes{ $0.baseAddress },
+                   hData.count)
 
-        var sha256Context = CC_SHA256_CTX()
-        CC_SHA256_Init(&sha256Context)
+        let totalSize = getFileSizeAtPath(inputPath)
+        let macLen = Int(CC_SHA256_DIGEST_LENGTH)
+        let encLen = Int(totalSize) - macLen
+        let chunk = CHUNK_SIZE
+        var buf = Data(count: chunk)
+        var left = encLen
 
-        var streamDigest = Data()
+        while left > 0 {
+          let toRead = min(chunk, left)
+          let rd = buf.withUnsafeMutableBytes{ ptr in
+            ins.read(ptr.baseAddress!
+                     .assumingMemoryBound(to: UInt8.self),
+                     maxLength: toRead)
+          }
+          guard rd > 0 else {
+            throw NSError(domain: "NitroAes",
+                          code: -1,
+                          userInfo: [NSLocalizedDescriptionKey:
+                                     "Unexpected EOF"])
+          }
+          left -= rd
+          let eChunk = buf.prefix(rd)
+          CCHmacUpdate(&hCtx,
+                       eChunk.withUnsafeBytes{ $0.baseAddress },
+                       eChunk.count)
 
-        // Read and decrypt data
-        let fileSize = getFileSizeAtPath(inputPath)
-        var remainingData = Int(fileSize) - Int(CC_SHA256_DIGEST_LENGTH)
-        let chunkSize = CHUNK_SIZE
-        var buffer = Data(count: chunkSize)
-
-        while remainingData > 0 {
-          autoreleasepool {
-            let bytesToRead = min(chunkSize, remainingData)
-            let bytesRead = buffer.withUnsafeMutableBytes { bufferBytes in
-              input.read(bufferBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: bytesToRead)
+          var dBuf = Data(count: eChunk.count+BLOCK_SIZE)
+          var outLen: size_t = 0
+          let uRes = dBuf.withUnsafeMutableBytes{ dPtr in
+            eChunk.withUnsafeBytes{ ePtr in
+              CCCryptorUpdate(decryptor,
+                              ePtr.baseAddress,
+                              ePtr.count,
+                              dPtr.baseAddress,
+                              dPtr.count,
+                              &outLen)
             }
+          }
+          guard uRes==kCCSuccess else {
+            throw NSError(domain: "NitroAes",
+                          code: -1,
+                          userInfo: [NSLocalizedDescriptionKey:
+                                     "Decrypt update error"])
+          }
 
-            guard bytesRead > 0 else { return }
-
-            let readData = buffer.prefix(bytesRead)
-
-            // Update HMAC and SHA-256
-            readData.withUnsafeBytes { readBytes in
-              CCHmacUpdate(&hmacContext, readBytes.baseAddress!, bytesRead)
-              CC_SHA256_Update(&sha256Context, readBytes.baseAddress!, CC_LONG(bytesRead))
+          let writeCnt: Int
+          if left==0 && paddingSize>0 {
+            writeCnt = max(0,
+                           outLen - Int(paddingSize))
+          } else {
+            writeCnt = outLen
+          }
+          if writeCnt>0 {
+            let oData = dBuf.prefix(writeCnt)
+            _ = oData.withUnsafeBytes{ ptr in
+              ous.write(ptr.baseAddress!
+                        .assumingMemoryBound(
+                          to: UInt8.self),
+                        maxLength: oData.count)
             }
-            streamDigest.append(readData)
-
-            // Decrypt the data
-            var decryptedBuffer = Data(count: chunkSize)
-            var bytesDecrypted: size_t = 0
-
-            decryptedBuffer.withUnsafeMutableBytes { decryptedBytes in
-              readData.withUnsafeBytes { readBytes in
-                CCCryptorUpdate(
-                  decryptor,
-                  readBytes.baseAddress!,
-                  bytesRead,
-                  decryptedBytes.baseAddress!,
-                  chunkSize,
-                  &bytesDecrypted
-                )
-              }
-            }
-
-            // Handle last chunk padding
-            if remainingData <= chunkSize && paddingSize > 0 {
-              let actualLength = bytesDecrypted
-              if actualLength > paddingSize {
-                let writeLength = actualLength - Int(paddingSize)
-                decryptedBuffer.withUnsafeBytes { decryptedBytes in
-                  _ = output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: writeLength)
-                }
-              }
-            } else {
-              decryptedBuffer.withUnsafeBytes { decryptedBytes in
-                _ = output.write(decryptedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: bytesDecrypted)
-              }
-            }
-
-            remainingData -= bytesRead
           }
         }
 
-        // Verify MAC and digest
-        var ourMac = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-        ourMac.withUnsafeMutableBytes { macBytes in
-          CCHmacFinal(&hmacContext, macBytes.baseAddress!)
-        }
+        // Verify HMAC
+        var ourMac = Data(
+          count: macLen
+        )
+        CCHmacFinal(&hCtx,
+                    ourMac.withUnsafeMutableBytes{ $0.baseAddress })
 
-        var theirMac = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-        let macBytesRead = theirMac.withUnsafeMutableBytes { macBytes in
-          input.read(macBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: Int(CC_SHA256_DIGEST_LENGTH))
+        var theirMac = Data(count: macLen)
+        let mRead = theirMac.withUnsafeMutableBytes{ ptr in
+          ins.read(ptr.baseAddress!
+                   .assumingMemoryBound(to: UInt8.self),
+                   maxLength: macLen)
         }
-
-        guard macBytesRead == Int(CC_SHA256_DIGEST_LENGTH) else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to read MAC"])
-        }
-
-        guard ourMac == theirMac else {
-          throw NSError(domain: "NitroAes", code: -1, userInfo: [NSLocalizedDescriptionKey: "MAC mismatch!"])
+        guard mRead==macLen,
+              ourMac==theirMac else {
+          throw NSError(domain: "NitroAes",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey:
+                                   "MAC mismatch"])
         }
 
         // Finalize decryption
-        var finalBuffer = Data(count: chunkSize)
-        var finalBytesDecrypted: size_t = 0
-
-        finalBuffer.withUnsafeMutableBytes { finalBytes in
-          CCCryptorFinal(decryptor, finalBytes.baseAddress!, chunkSize, &finalBytesDecrypted)
+        var fBuf = Data(count: BLOCK_SIZE)
+        var fLen: size_t = 0
+        let fRes2 = fBuf.withUnsafeMutableBytes{ fPtr in
+          CCCryptorFinal(decryptor,
+                         fPtr.baseAddress,
+                         fPtr.count,
+                         &fLen)
         }
-
-        if finalBytesDecrypted > 0 {
-          finalBuffer.withUnsafeBytes { finalBytes in
-            _ = output.write(finalBytes.baseAddress!.assumingMemoryBound(to: UInt8.self), maxLength: finalBytesDecrypted)
+        if fRes2==kCCSuccess && fLen>0 {
+          let data = fBuf.prefix(fLen)
+          _ = data.withUnsafeBytes{ ptr in
+            ous.write(ptr.baseAddress!
+                      .assumingMemoryBound(
+                        to: UInt8.self),
+                      maxLength: data.count)
           }
         }
 
-        // Success
         completion("Success")
-
       } catch {
         completion(error.localizedDescription)
       }
