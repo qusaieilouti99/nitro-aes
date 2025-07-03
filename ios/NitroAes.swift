@@ -365,6 +365,7 @@ public class NitroAes: HybridNitroAesSpec {
     }
 
     var buf = Data(count: data.count+BLOCK_SIZE)
+    let bufCount = buf.count // Store count to avoid overlapping access
     var outN: size_t = 0
     let st = k.withUnsafeBytes { kPtr in
       v.withUnsafeBytes { ivPtr in
@@ -382,7 +383,7 @@ public class NitroAes: HybridNitroAesSpec {
               dPtr.baseAddress,
               data.count,
               bPtr.baseAddress,
-              buf.count,
+              bufCount, // Use local variable instead of buf.count
               &outN
             )
           }
@@ -445,7 +446,7 @@ public class NitroAes: HybridNitroAesSpec {
       return ""
     }
     var buf = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    buf.withUnsafeMutableBytes { bPtr in
+    _ = buf.withUnsafeMutableBytes { bPtr in
       d.withUnsafeBytes { dPtr in
         k.withUnsafeBytes { kPtr in
           CCHmac(
@@ -471,7 +472,7 @@ public class NitroAes: HybridNitroAesSpec {
       return ""
     }
     var buf = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    buf.withUnsafeMutableBytes { bPtr in
+    _ = buf.withUnsafeMutableBytes { bPtr in
       d.withUnsafeBytes { dPtr in
         k.withUnsafeBytes { kPtr in
           CCHmac(
@@ -493,7 +494,7 @@ public class NitroAes: HybridNitroAesSpec {
       return ""
     }
     var buf = Data(count: Int(CC_SHA1_DIGEST_LENGTH))
-    buf.withUnsafeMutableBytes { bPtr in
+    _ = buf.withUnsafeMutableBytes { bPtr in
       d.withUnsafeBytes { dPtr in
         CC_SHA1(dPtr.baseAddress,
                 CC_LONG(d.count),
@@ -509,7 +510,7 @@ public class NitroAes: HybridNitroAesSpec {
       return ""
     }
     var buf = Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    buf.withUnsafeMutableBytes { bPtr in
+    _ = buf.withUnsafeMutableBytes { bPtr in
       d.withUnsafeBytes { dPtr in
         CC_SHA256(dPtr.baseAddress,
                   CC_LONG(d.count),
@@ -525,7 +526,7 @@ public class NitroAes: HybridNitroAesSpec {
       return ""
     }
     var buf = Data(count: Int(CC_SHA512_DIGEST_LENGTH))
-    buf.withUnsafeMutableBytes { bPtr in
+    _ = buf.withUnsafeMutableBytes { bPtr in
       d.withUnsafeBytes { dPtr in
         CC_SHA512(dPtr.baseAddress,
                   CC_LONG(d.count),
@@ -634,6 +635,7 @@ public class NitroAes: HybridNitroAesSpec {
       }
 
       var encBuf = Data(count: chunkData.count+BLOCK_SIZE)
+      let encBufCount = encBuf.count // Store count to avoid overlapping access
       var outLen: size_t = 0
       let uRes = encBuf.withUnsafeMutableBytes{ ePtr in
         chunkData.withUnsafeBytes{ cPtr in
@@ -641,7 +643,7 @@ public class NitroAes: HybridNitroAesSpec {
                           cPtr.baseAddress,
                           cPtr.count,
                           ePtr.baseAddress,
-                          ePtr.count,
+                          encBufCount, // Use local variable
                           &outLen)
         }
       }
@@ -661,11 +663,12 @@ public class NitroAes: HybridNitroAesSpec {
     }
 
     var finBuf = Data(count: BLOCK_SIZE)
+    let finBufCount = finBuf.count // Store count to avoid overlapping access
     var finLen: size_t = 0
     let fRes = finBuf.withUnsafeMutableBytes{ fPtr in
       CCCryptorFinal(encryptor,
                      fPtr.baseAddress,
-                     fPtr.count,
+                     finBufCount, // Use local variable
                      &finLen)
     }
     if fRes==kCCSuccess && finLen>0 {
@@ -695,7 +698,7 @@ public class NitroAes: HybridNitroAesSpec {
 
     var authBuf =
       Data(count: Int(CC_SHA256_DIGEST_LENGTH))
-    authBuf.withUnsafeMutableBytes{ aPtr in
+    _ = authBuf.withUnsafeMutableBytes{ aPtr in
       digestBuf.withUnsafeBytes{ dPtr in
         CC_SHA256(dPtr.baseAddress,
                   CC_LONG(digestBuf.count),
@@ -839,6 +842,7 @@ public class NitroAes: HybridNitroAesSpec {
                        eChunk.count)
 
           var dBuf = Data(count: eChunk.count+BLOCK_SIZE)
+          let dBufCount = dBuf.count // Store count to avoid overlapping access
           var outLen: size_t = 0
           let uRes = dBuf.withUnsafeMutableBytes{ dPtr in
             eChunk.withUnsafeBytes{ ePtr in
@@ -846,7 +850,7 @@ public class NitroAes: HybridNitroAesSpec {
                               ePtr.baseAddress,
                               ePtr.count,
                               dPtr.baseAddress,
-                              dPtr.count,
+                              dBufCount, // Use local variable
                               &outLen)
             }
           }
@@ -898,11 +902,12 @@ public class NitroAes: HybridNitroAesSpec {
 
         // Finalize decryption
         var fBuf = Data(count: BLOCK_SIZE)
+        let fBufCount = fBuf.count // Store count to avoid overlapping access
         var fLen: size_t = 0
         let fRes2 = fBuf.withUnsafeMutableBytes{ fPtr in
           CCCryptorFinal(decryptor,
                          fPtr.baseAddress,
-                         fPtr.count,
+                         fBufCount, // Use local variable
                          &fLen)
         }
         if fRes2==kCCSuccess && fLen>0 {
