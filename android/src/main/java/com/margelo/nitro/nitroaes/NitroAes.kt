@@ -8,6 +8,8 @@ import com.margelo.nitro.nitroaes.NitroAesOnLoad
 import com.margelo.nitro.nitroaes.Algorithms
 import com.margelo.nitro.nitroaes.EncryptFileResult
 import com.margelo.nitro.nitroaes.HybridNitroAesSpec
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -34,6 +36,12 @@ class NitroAes : HybridNitroAesSpec() {
     private const val HMAC_SHA256 = "HmacSHA256"
     private const val BLOCK_SIZE = 16
     private const val CHUNK_SIZE = BLOCK_SIZE * 4 * 1024
+
+    // Pre-compiled regex for better performance
+    private val HEX_PATTERN = Regex("^[0-9a-fA-F]+$")
+
+    // Hex lookup table for faster conversion
+    private val HEX_CHARS = "0123456789abcdef".toCharArray()
 
     private val isInitialized: Boolean by lazy {
       NitroAesOnLoad.initializeNative()
@@ -77,6 +85,7 @@ class NitroAes : HybridNitroAesSpec() {
       )
       val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
       val keyBytes = factory.generateSecret(spec).encoded
+      spec.clearPassword() // Clear sensitive data
       bytesToHex(keyBytes)
     } catch (e: Exception) {
       Log.e(TAG, "PBKDF2 error: ${e.message}", e)
@@ -97,7 +106,7 @@ class NitroAes : HybridNitroAesSpec() {
       if (iv.isNotEmpty()) {
         validateHexString(iv, "iv")
       }
-      encryptText(text, key, iv)
+      encryptText(text, key, iv, algorithm)
     } catch (e: Exception) {
       Log.e(TAG, "Encrypt error: ${e.message}", e)
       throw RuntimeException("Encryption failed: ${e.message}", e)
@@ -117,7 +126,7 @@ class NitroAes : HybridNitroAesSpec() {
       if (iv.isNotEmpty()) {
         validateHexString(iv, "iv")
       }
-      decryptText(ciphertext, key, iv)
+      decryptText(ciphertext, key, iv, algorithm)
     } catch (e: Exception) {
       Log.e(TAG, "Decrypt error: ${e.message}", e)
       throw RuntimeException("Decryption failed: ${e.message}", e)
@@ -163,7 +172,6 @@ class NitroAes : HybridNitroAesSpec() {
     try {
       ensureInitialized()
 
-      // Validate inputs
       validateHexString(keyHex, "key")
       validateHexString(ivHex, "iv")
       validateHexString(hmacHex, "hmacKey")
@@ -283,33 +291,55 @@ class NitroAes : HybridNitroAesSpec() {
     if (hex.length % 2 != 0) {
       throw IllegalArgumentException("$name must have even length")
     }
-    if (!hex.matches(Regex("^[0-9a-fA-F]+$"))) {
+    if (!HEX_PATTERN.matches(hex)) {
       throw IllegalArgumentException("$name contains invalid hex characters")
     }
   }
 
   private fun hexToBytes(hex: String): ByteArray {
     try {
-      return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-    } catch (e: NumberFormatException) {
+      val len = hex.length
+      val result = ByteArray(len / 2)
+      for (i in 0 until len step 2) {
+        result[i / 2] = ((Character.digit(hex[i], 16) shl 4) + Character.digit(hex[i + 1], 16)).toByte()
+      }
+      return result
+    } catch (e: Exception) {
       throw IllegalArgumentException("Invalid hex string: $hex", e)
     }
   }
 
-  private fun bytesToHex(bytes: ByteArray): String =
-    bytes.joinToString("") { "%02x".format(it) }
+  // Optimized hex conversion using lookup table
+  private fun bytesToHex(bytes: ByteArray): String {
+    val result = StringBuilder(bytes.size * 2)
+    for (byte in bytes) {
+      val b = byte.toInt() and 0xFF
+      result.append(HEX_CHARS[b ushr 4])
+      result.append(HEX_CHARS[b and 0x0F])
+    }
+    return result.toString()
+  }
 
   private fun encryptText(
     text: String,
     keyHex: String,
-    ivHex: String
+    ivHex: String,
+    algorithm: Algorithms
   ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
 
-    if (key.size != 32) { // 256 bits
-      throw IllegalArgumentException("Key must be 256 bits (64 hex characters)")
+    // Validate key size based on algorithm
+    val expectedKeySize = when (algorithm) {
+      Algorithms.AES_128_CBC -> 16
+      Algorithms.AES_192_CBC -> 24
+      Algorithms.AES_256_CBC -> 32
     }
+
+    if (key.size != expectedKeySize) {
+      throw IllegalArgumentException("Key must be ${expectedKeySize * 8} bits for $algorithm")
+    }
+
     if (iv.size != BLOCK_SIZE) {
       throw IllegalArgumentException("IV must be 128 bits (32 hex characters)")
     }
@@ -323,14 +353,23 @@ class NitroAes : HybridNitroAesSpec() {
   private fun decryptText(
     cipherText: String,
     keyHex: String,
-    ivHex: String
+    ivHex: String,
+    algorithm: Algorithms
   ): String {
     val key = hexToBytes(keyHex)
     val iv = if (ivHex.isEmpty()) ByteArray(BLOCK_SIZE) else hexToBytes(ivHex)
 
-    if (key.size != 32) { // 256 bits
-      throw IllegalArgumentException("Key must be 256 bits (64 hex characters)")
+    // Validate key size based on algorithm
+    val expectedKeySize = when (algorithm) {
+      Algorithms.AES_128_CBC -> 16
+      Algorithms.AES_192_CBC -> 24
+      Algorithms.AES_256_CBC -> 32
     }
+
+    if (key.size != expectedKeySize) {
+      throw IllegalArgumentException("Key must be ${expectedKeySize * 8} bits for $algorithm")
+    }
+
     if (iv.size != BLOCK_SIZE) {
       throw IllegalArgumentException("IV must be 128 bits (32 hex characters)")
     }
@@ -407,8 +446,9 @@ class NitroAes : HybridNitroAesSpec() {
     val mac = Mac.getInstance(HMAC_SHA256).apply { init(macKey) }
     val digest = MessageDigest.getInstance("SHA-256")
 
-    FileInputStream(inFile).use { input ->
-      FileOutputStream(outFile).use { output ->
+    // Use buffered streams for better I/O performance with original chunk size
+    BufferedInputStream(FileInputStream(inFile), CHUNK_SIZE).use { input ->
+      BufferedOutputStream(FileOutputStream(outFile), CHUNK_SIZE).use { output ->
         val size = inFile.length()
         val padding = if (size % BLOCK_SIZE == 0L) 0 else (BLOCK_SIZE - (size % BLOCK_SIZE)).toInt()
         val buffer = ByteArray(CHUNK_SIZE)
@@ -496,8 +536,9 @@ class NitroAes : HybridNitroAesSpec() {
       }
     }
 
-    FileInputStream(inFile).use { input ->
-      FileOutputStream(outFile).use { output ->
+    // Use buffered streams for better I/O performance with original chunk size
+    BufferedInputStream(FileInputStream(inFile), CHUNK_SIZE).use { input ->
+      BufferedOutputStream(FileOutputStream(outFile), CHUNK_SIZE).use { output ->
         val size = inFile.length()
         val macLen = mac.macLength
 
