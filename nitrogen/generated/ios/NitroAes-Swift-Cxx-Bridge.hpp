@@ -56,13 +56,13 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    */
   class Func_void_std__string_Wrapper final {
   public:
-    explicit Func_void_std__string_Wrapper(std::function<void(const std::string& /* result */)>&& func): _function(std::make_shared<std::function<void(const std::string& /* result */)>>(std::move(func))) {}
+    explicit Func_void_std__string_Wrapper(std::function<void(const std::string& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::string& /* result */)>>(std::move(func))) {}
     inline void call(std::string result) const {
       _function->operator()(result);
     }
   private:
-    std::shared_ptr<std::function<void(const std::string& /* result */)>> _function;
-  };
+    std::unique_ptr<std::function<void(const std::string& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
   Func_void_std__string create_Func_void_std__string(void* _Nonnull swiftClosureWrapper);
   inline Func_void_std__string_Wrapper wrap_Func_void_std__string(Func_void_std__string value) {
     return Func_void_std__string_Wrapper(std::move(value));
@@ -78,13 +78,13 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    */
   class Func_void_std__exception_ptr_Wrapper final {
   public:
-    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_shared<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
+    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
     inline void call(std::exception_ptr error) const {
       _function->operator()(error);
     }
   private:
-    std::shared_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
-  };
+    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
   Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* _Nonnull swiftClosureWrapper);
   inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
@@ -112,13 +112,13 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    */
   class Func_void_EncryptFileResult_Wrapper final {
   public:
-    explicit Func_void_EncryptFileResult_Wrapper(std::function<void(const EncryptFileResult& /* result */)>&& func): _function(std::make_shared<std::function<void(const EncryptFileResult& /* result */)>>(std::move(func))) {}
+    explicit Func_void_EncryptFileResult_Wrapper(std::function<void(const EncryptFileResult& /* result */)>&& func): _function(std::make_unique<std::function<void(const EncryptFileResult& /* result */)>>(std::move(func))) {}
     inline void call(EncryptFileResult result) const {
       _function->operator()(result);
     }
   private:
-    std::shared_ptr<std::function<void(const EncryptFileResult& /* result */)>> _function;
-  };
+    std::unique_ptr<std::function<void(const EncryptFileResult& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
   Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* _Nonnull swiftClosureWrapper);
   inline Func_void_EncryptFileResult_Wrapper wrap_Func_void_EncryptFileResult(Func_void_EncryptFileResult value) {
     return Func_void_EncryptFileResult_Wrapper(std::move(value));
