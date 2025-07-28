@@ -12,8 +12,8 @@ namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 // Forward declaration of `Algorithms` to properly resolve imports.
 namespace margelo::nitro::nitroaes { enum class Algorithms; }
 
-#include <NitroModules/Promise.hpp>
 #include <string>
+#include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
 #include "EncryptFileResult.hpp"
 #include "JEncryptFileResult.hpp"
@@ -35,6 +35,11 @@ namespace margelo::nitro::nitroaes {
   size_t JHybridNitroAesSpec::getExternalMemorySize() noexcept {
     static const auto method = javaClassStatic()->getMethod<jlong()>("getMemorySize");
     return method(_javaPart);
+  }
+
+  void JHybridNitroAesSpec::dispose() noexcept {
+    static const auto method = javaClassStatic()->getMethod<void()>("dispose");
+    method(_javaPart);
   }
 
   // Properties

@@ -18,8 +18,8 @@ namespace margelo::nitro::nitroaes { enum class Algorithms; }
 // Forward declaration of `EncryptFileResult` to properly resolve imports.
 namespace margelo::nitro::nitroaes { struct EncryptFileResult; }
 
-#include <NitroModules/Promise.hpp>
 #include <string>
+#include <NitroModules/Promise.hpp>
 #include "Algorithms.hpp"
 #include "EncryptFileResult.hpp"
 
