@@ -124,17 +124,17 @@ namespace margelo::nitro::nitroaes::bridge::swift {
     return Func_void_EncryptFileResult_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>
+  // pragma MARK: std::shared_ptr<HybridNitroAesSpec>
   /**
-   * Specialized version of `std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>`.
+   * Specialized version of `std::shared_ptr<HybridNitroAesSpec>`.
    */
-  using std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_ = std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>;
-  std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec> create_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(void* _Nonnull swiftUnsafePointer);
-  void* _Nonnull get_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_ cppType);
+  using std__shared_ptr_HybridNitroAesSpec_ = std::shared_ptr<HybridNitroAesSpec>;
+  std::shared_ptr<HybridNitroAesSpec> create_std__shared_ptr_HybridNitroAesSpec_(void* _Nonnull swiftUnsafePointer);
+  void* _Nonnull get_std__shared_ptr_HybridNitroAesSpec_(std__shared_ptr_HybridNitroAesSpec_ cppType);
   
-  // pragma MARK: std::weak_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>
-  using std__weak_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_ = std::weak_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>;
-  inline std__weak_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_ weakify_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(const std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>& strong) { return strong; }
+  // pragma MARK: std::weak_ptr<HybridNitroAesSpec>
+  using std__weak_ptr_HybridNitroAesSpec_ = std::weak_ptr<HybridNitroAesSpec>;
+  inline std__weak_ptr_HybridNitroAesSpec_ weakify_std__shared_ptr_HybridNitroAesSpec_(const std::shared_ptr<HybridNitroAesSpec>& strong) { return strong; }
   
   // pragma MARK: Result<std::shared_ptr<Promise<std::string>>>
   using Result_std__shared_ptr_Promise_std__string___ = Result<std::shared_ptr<Promise<std::string>>>;

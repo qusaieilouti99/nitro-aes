@@ -41,19 +41,17 @@ namespace margelo::nitro::nitroaes {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroaes;
-
   // C++ EncryptFileResult <> JS EncryptFileResult (object)
   template <>
-  struct JSIConverter<EncryptFileResult> final {
-    static inline EncryptFileResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroaes::EncryptFileResult> final {
+    static inline margelo::nitro::nitroaes::EncryptFileResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return EncryptFileResult(
+      return margelo::nitro::nitroaes::EncryptFileResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "auth")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "paddingSize"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const EncryptFileResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroaes::EncryptFileResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "auth", JSIConverter<std::string>::toJSI(runtime, arg.auth));
       obj.setProperty(runtime, "paddingSize", JSIConverter<double>::toJSI(runtime, arg.paddingSize));

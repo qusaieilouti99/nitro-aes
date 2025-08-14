@@ -11,6 +11,7 @@ import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.*
 
+
 /**
  * Represents the JavaScript object/struct "EncryptFileResult".
  */
@@ -20,7 +21,11 @@ data class EncryptFileResult
   @DoNotStrip
   @Keep
   constructor(
+    @DoNotStrip
+    @Keep
     val auth: String,
+    @DoNotStrip
+    @Keep
     val paddingSize: Double
   ) {
   /* main constructor */

@@ -15,12 +15,8 @@ import com.facebook.proguard.annotations.DoNotStrip
  */
 @DoNotStrip
 @Keep
-enum class Algorithms {
-  AES_128_CBC,
-  AES_192_CBC,
-  AES_256_CBC;
-
-  @DoNotStrip
-  @Keep
-  private val _ordinal = ordinal
+enum class Algorithms(@DoNotStrip @Keep val value: Int) {
+  AES_128_CBC(0),
+  AES_192_CBC(1),
+  AES_256_CBC(2);
 }

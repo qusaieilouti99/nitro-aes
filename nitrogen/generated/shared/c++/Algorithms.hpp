@@ -38,26 +38,24 @@ namespace margelo::nitro::nitroaes {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroaes;
-
   // C++ Algorithms <> JS Algorithms (union)
   template <>
-  struct JSIConverter<Algorithms> final {
-    static inline Algorithms fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroaes::Algorithms> final {
+    static inline margelo::nitro::nitroaes::Algorithms fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("aes-128-cbc"): return Algorithms::AES_128_CBC;
-        case hashString("aes-192-cbc"): return Algorithms::AES_192_CBC;
-        case hashString("aes-256-cbc"): return Algorithms::AES_256_CBC;
+        case hashString("aes-128-cbc"): return margelo::nitro::nitroaes::Algorithms::AES_128_CBC;
+        case hashString("aes-192-cbc"): return margelo::nitro::nitroaes::Algorithms::AES_192_CBC;
+        case hashString("aes-256-cbc"): return margelo::nitro::nitroaes::Algorithms::AES_256_CBC;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum Algorithms - invalid value!");
       }
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, Algorithms arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::nitroaes::Algorithms arg) {
       switch (arg) {
-        case Algorithms::AES_128_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-128-cbc");
-        case Algorithms::AES_192_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-192-cbc");
-        case Algorithms::AES_256_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-256-cbc");
+        case margelo::nitro::nitroaes::Algorithms::AES_128_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-128-cbc");
+        case margelo::nitro::nitroaes::Algorithms::AES_192_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-192-cbc");
+        case margelo::nitro::nitroaes::Algorithms::AES_256_CBC: return JSIConverter<std::string>::toJSI(runtime, "aes-256-cbc");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert Algorithms to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");

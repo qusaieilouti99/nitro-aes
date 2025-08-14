@@ -33,7 +33,7 @@ open class HybridNitroAesSpec_cxx {
   /**
    * Holds a weak pointer to the C++ class that wraps the Swift class.
    */
-  private var __cxxPart: bridge.std__weak_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_
+  private var __cxxPart: bridge.std__weak_ptr_HybridNitroAesSpec_
 
   /**
    * Create a new `HybridNitroAesSpec_cxx` that wraps the given `HybridNitroAesSpec`.
@@ -72,15 +72,15 @@ open class HybridNitroAesSpec_cxx {
 
   /**
    * Gets (or creates) the C++ part of this Hybrid Object.
-   * The C++ part is a `std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec>`.
+   * The C++ part is a `std::shared_ptr<HybridNitroAesSpec>`.
    */
-  public func getCxxPart() -> bridge.std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_ {
+  public func getCxxPart() -> bridge.std__shared_ptr_HybridNitroAesSpec_ {
     let cachedCxxPart = self.__cxxPart.lock()
     if cachedCxxPart.__convertToBool() {
       return cachedCxxPart
     } else {
-      let newCxxPart = bridge.create_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(self.toUnsafe())
-      __cxxPart = bridge.weakify_std__shared_ptr_margelo__nitro__nitroaes__HybridNitroAesSpec_(newCxxPart)
+      let newCxxPart = bridge.create_std__shared_ptr_HybridNitroAesSpec_(self.toUnsafe())
+      __cxxPart = bridge.weakify_std__shared_ptr_HybridNitroAesSpec_(newCxxPart)
       return newCxxPart
     }
   }

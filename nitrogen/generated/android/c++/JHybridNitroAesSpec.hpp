@@ -29,6 +29,7 @@ namespace margelo::nitro::nitroaes {
     // C++ constructor (called from Java via `initHybrid()`)
     explicit JHybridNitroAesSpec(jni::alias_ref<jhybridobject> jThis) :
       HybridObject(HybridNitroAesSpec::TAG),
+      HybridBase(jThis),
       _javaPart(jni::make_global(jThis)) {}
 
   public:

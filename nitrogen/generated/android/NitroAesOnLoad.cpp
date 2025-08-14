@@ -16,7 +16,6 @@
 #include <NitroModules/HybridObjectRegistry.hpp>
 
 #include "JHybridNitroAesSpec.hpp"
-#include <NitroModules/JNISharedPtr.hpp>
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::nitroaes {
@@ -37,7 +36,7 @@ int initialize(JavaVM* vm) {
         static DefaultConstructableObject<JHybridNitroAesSpec::javaobject> object("com/margelo/nitro/nitroaes/NitroAes");
         auto instance = object.create();
         auto globalRef = jni::make_global(instance);
-        return JNISharedPtr::make_shared_from_jni<JHybridNitroAesSpec>(globalRef);
+        return globalRef->cthis()->shared();
       }
     );
   });

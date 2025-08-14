@@ -30,6 +30,7 @@ public protocol HybridNitroAesSpec_protocol: HybridObject {
 /// See ``HybridNitroAesSpec``
 open class HybridNitroAesSpec_base {
   private weak var cxxWrapper: HybridNitroAesSpec_cxx? = nil
+  public init() { }
   public func getCxxWrapper() -> HybridNitroAesSpec_cxx {
   #if DEBUG
     guard self is HybridNitroAesSpec else {

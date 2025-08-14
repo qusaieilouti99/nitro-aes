@@ -24,7 +24,7 @@
   HybridObjectRegistry::registerHybridObjectConstructor(
     "NitroAes",
     []() -> std::shared_ptr<HybridObject> {
-      std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpec> hybridObject = NitroAes::NitroAesAutolinking::createNitroAes();
+      std::shared_ptr<HybridNitroAesSpec> hybridObject = NitroAes::NitroAesAutolinking::createNitroAes();
       return hybridObject;
     }
   );
