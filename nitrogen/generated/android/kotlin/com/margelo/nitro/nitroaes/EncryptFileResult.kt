@@ -9,7 +9,6 @@ package com.margelo.nitro.nitroaes
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
-import com.margelo.nitro.core.*
 
 
 /**
@@ -17,16 +16,26 @@ import com.margelo.nitro.core.*
  */
 @DoNotStrip
 @Keep
-data class EncryptFileResult
+data class EncryptFileResult(
   @DoNotStrip
   @Keep
-  constructor(
+  val auth: String,
+  @DoNotStrip
+  @Keep
+  val paddingSize: Double
+) {
+  /* primary constructor */
+
+  private companion object {
+    /**
+     * Constructor called from C++
+     */
     @DoNotStrip
     @Keep
-    val auth: String,
-    @DoNotStrip
-    @Keep
-    val paddingSize: Double
-  ) {
-  /* main constructor */
+    @Suppress("unused")
+    @JvmStatic
+    private fun fromCpp(auth: String, paddingSize: Double): EncryptFileResult {
+      return EncryptFileResult(auth, paddingSize)
+    }
+  }
 }

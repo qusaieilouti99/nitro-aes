@@ -42,6 +42,12 @@ namespace margelo::nitro::nitroaes {
     method(_javaPart);
   }
 
+  std::string JHybridNitroAesSpec::toString() {
+    static const auto method = javaClassStatic()->getMethod<jni::JString()>("toString");
+    auto javaString = method(_javaPart);
+    return javaString->toStdString();
+  }
+
   // Properties
   
 

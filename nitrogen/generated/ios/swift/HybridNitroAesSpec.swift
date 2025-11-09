@@ -7,6 +7,7 @@
 
 import Foundation
 import NitroModules
+import NitroModules
 
 /// See ``HybridNitroAesSpec``
 public protocol HybridNitroAesSpec_protocol: HybridObject {
@@ -25,6 +26,13 @@ public protocol HybridNitroAesSpec_protocol: HybridObject {
   func sha1(text: String) throws -> Promise<String>
   func sha256(text: String) throws -> Promise<String>
   func sha512(text: String) throws -> Promise<String>
+}
+
+public extension HybridNitroAesSpec_protocol {
+  /// Default implementation of ``HybridObject.toString``
+  func toString() -> String {
+    return "[HybridObject NitroAes]"
+  }
 }
 
 /// See ``HybridNitroAesSpec``

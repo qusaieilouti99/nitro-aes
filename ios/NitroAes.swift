@@ -2,7 +2,7 @@ import Foundation
 import CommonCrypto
 import NitroModules
 
-public class NitroAes: HybridNitroAesSpec {
+class NitroAes: HybridNitroAesSpec {
   public override init() {
     super.init()
   }

@@ -41,6 +41,7 @@ namespace margelo::nitro::nitroaes {
   public:
     size_t getExternalMemorySize() noexcept override;
     void dispose() noexcept override;
+    std::string toString() override;
 
   public:
     inline const jni::global_ref<JHybridNitroAesSpec::javaobject>& getJavaPart() const noexcept {

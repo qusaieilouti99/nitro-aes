@@ -14,7 +14,7 @@
 namespace margelo::nitro::nitroaes::bridge::swift {
 
   // pragma MARK: std::function<void(const std::string& /* result */)>
-  Func_void_std__string create_Func_void_std__string(void* _Nonnull swiftClosureWrapper) {
+  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroAes::Func_void_std__string::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const std::string& result) mutable -> void {
       swiftClosure.call(result);
@@ -22,7 +22,7 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   }
   
   // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* _Nonnull swiftClosureWrapper) {
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroAes::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
       swiftClosure.call(error);
@@ -30,7 +30,7 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   }
   
   // pragma MARK: std::function<void(const EncryptFileResult& /* result */)>
-  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* _Nonnull swiftClosureWrapper) {
+  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroAes::Func_void_EncryptFileResult::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const EncryptFileResult& result) mutable -> void {
       swiftClosure.call(result);
@@ -38,11 +38,11 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   }
   
   // pragma MARK: std::shared_ptr<HybridNitroAesSpec>
-  std::shared_ptr<HybridNitroAesSpec> create_std__shared_ptr_HybridNitroAesSpec_(void* _Nonnull swiftUnsafePointer) {
+  std::shared_ptr<HybridNitroAesSpec> create_std__shared_ptr_HybridNitroAesSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroAes::HybridNitroAesSpec_cxx swiftPart = NitroAes::HybridNitroAesSpec_cxx::fromUnsafe(swiftUnsafePointer);
     return std::make_shared<margelo::nitro::nitroaes::HybridNitroAesSpecSwift>(swiftPart);
   }
-  void* _Nonnull get_std__shared_ptr_HybridNitroAesSpec_(std__shared_ptr_HybridNitroAesSpec_ cppType) {
+  void* NON_NULL get_std__shared_ptr_HybridNitroAesSpec_(std__shared_ptr_HybridNitroAesSpec_ cppType) {
     std::shared_ptr<margelo::nitro::nitroaes::HybridNitroAesSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroaes::HybridNitroAesSpecSwift>(cppType);
     #ifdef NITRO_DEBUG
     if (swiftWrapper == nullptr) [[unlikely]] {

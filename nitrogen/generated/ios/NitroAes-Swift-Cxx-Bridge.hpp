@@ -39,10 +39,10 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    * Specialized version of `std::shared_ptr<Promise<std::string>>`.
    */
   using std__shared_ptr_Promise_std__string__ = std::shared_ptr<Promise<std::string>>;
-  inline std::shared_ptr<Promise<std::string>> create_std__shared_ptr_Promise_std__string__() {
+  inline std::shared_ptr<Promise<std::string>> create_std__shared_ptr_Promise_std__string__() noexcept {
     return Promise<std::string>::create();
   }
-  inline PromiseHolder<std::string> wrap_std__shared_ptr_Promise_std__string__(std::shared_ptr<Promise<std::string>> promise) {
+  inline PromiseHolder<std::string> wrap_std__shared_ptr_Promise_std__string__(std::shared_ptr<Promise<std::string>> promise) noexcept {
     return PromiseHolder<std::string>(std::move(promise));
   }
   
@@ -57,14 +57,14 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   class Func_void_std__string_Wrapper final {
   public:
     explicit Func_void_std__string_Wrapper(std::function<void(const std::string& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::string& /* result */)>>(std::move(func))) {}
-    inline void call(std::string result) const {
+    inline void call(std::string result) const noexcept {
       _function->operator()(result);
     }
   private:
     std::unique_ptr<std::function<void(const std::string& /* result */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_std__string create_Func_void_std__string(void* _Nonnull swiftClosureWrapper);
-  inline Func_void_std__string_Wrapper wrap_Func_void_std__string(Func_void_std__string value) {
+  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__string_Wrapper wrap_Func_void_std__string(Func_void_std__string value) noexcept {
     return Func_void_std__string_Wrapper(std::move(value));
   }
   
@@ -79,14 +79,14 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   class Func_void_std__exception_ptr_Wrapper final {
   public:
     explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
-    inline void call(std::exception_ptr error) const {
+    inline void call(std::exception_ptr error) const noexcept {
       _function->operator()(error);
     }
   private:
     std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* _Nonnull swiftClosureWrapper);
-  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) {
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
   }
   
@@ -95,10 +95,10 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    * Specialized version of `std::shared_ptr<Promise<EncryptFileResult>>`.
    */
   using std__shared_ptr_Promise_EncryptFileResult__ = std::shared_ptr<Promise<EncryptFileResult>>;
-  inline std::shared_ptr<Promise<EncryptFileResult>> create_std__shared_ptr_Promise_EncryptFileResult__() {
+  inline std::shared_ptr<Promise<EncryptFileResult>> create_std__shared_ptr_Promise_EncryptFileResult__() noexcept {
     return Promise<EncryptFileResult>::create();
   }
-  inline PromiseHolder<EncryptFileResult> wrap_std__shared_ptr_Promise_EncryptFileResult__(std::shared_ptr<Promise<EncryptFileResult>> promise) {
+  inline PromiseHolder<EncryptFileResult> wrap_std__shared_ptr_Promise_EncryptFileResult__(std::shared_ptr<Promise<EncryptFileResult>> promise) noexcept {
     return PromiseHolder<EncryptFileResult>(std::move(promise));
   }
   
@@ -113,14 +113,14 @@ namespace margelo::nitro::nitroaes::bridge::swift {
   class Func_void_EncryptFileResult_Wrapper final {
   public:
     explicit Func_void_EncryptFileResult_Wrapper(std::function<void(const EncryptFileResult& /* result */)>&& func): _function(std::make_unique<std::function<void(const EncryptFileResult& /* result */)>>(std::move(func))) {}
-    inline void call(EncryptFileResult result) const {
+    inline void call(EncryptFileResult result) const noexcept {
       _function->operator()(result);
     }
   private:
     std::unique_ptr<std::function<void(const EncryptFileResult& /* result */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* _Nonnull swiftClosureWrapper);
-  inline Func_void_EncryptFileResult_Wrapper wrap_Func_void_EncryptFileResult(Func_void_EncryptFileResult value) {
+  Func_void_EncryptFileResult create_Func_void_EncryptFileResult(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_EncryptFileResult_Wrapper wrap_Func_void_EncryptFileResult(Func_void_EncryptFileResult value) noexcept {
     return Func_void_EncryptFileResult_Wrapper(std::move(value));
   }
   
@@ -129,28 +129,28 @@ namespace margelo::nitro::nitroaes::bridge::swift {
    * Specialized version of `std::shared_ptr<HybridNitroAesSpec>`.
    */
   using std__shared_ptr_HybridNitroAesSpec_ = std::shared_ptr<HybridNitroAesSpec>;
-  std::shared_ptr<HybridNitroAesSpec> create_std__shared_ptr_HybridNitroAesSpec_(void* _Nonnull swiftUnsafePointer);
-  void* _Nonnull get_std__shared_ptr_HybridNitroAesSpec_(std__shared_ptr_HybridNitroAesSpec_ cppType);
+  std::shared_ptr<HybridNitroAesSpec> create_std__shared_ptr_HybridNitroAesSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridNitroAesSpec_(std__shared_ptr_HybridNitroAesSpec_ cppType);
   
   // pragma MARK: std::weak_ptr<HybridNitroAesSpec>
   using std__weak_ptr_HybridNitroAesSpec_ = std::weak_ptr<HybridNitroAesSpec>;
-  inline std__weak_ptr_HybridNitroAesSpec_ weakify_std__shared_ptr_HybridNitroAesSpec_(const std::shared_ptr<HybridNitroAesSpec>& strong) { return strong; }
+  inline std__weak_ptr_HybridNitroAesSpec_ weakify_std__shared_ptr_HybridNitroAesSpec_(const std::shared_ptr<HybridNitroAesSpec>& strong) noexcept { return strong; }
   
   // pragma MARK: Result<std::shared_ptr<Promise<std::string>>>
   using Result_std__shared_ptr_Promise_std__string___ = Result<std::shared_ptr<Promise<std::string>>>;
-  inline Result_std__shared_ptr_Promise_std__string___ create_Result_std__shared_ptr_Promise_std__string___(const std::shared_ptr<Promise<std::string>>& value) {
+  inline Result_std__shared_ptr_Promise_std__string___ create_Result_std__shared_ptr_Promise_std__string___(const std::shared_ptr<Promise<std::string>>& value) noexcept {
     return Result<std::shared_ptr<Promise<std::string>>>::withValue(value);
   }
-  inline Result_std__shared_ptr_Promise_std__string___ create_Result_std__shared_ptr_Promise_std__string___(const std::exception_ptr& error) {
+  inline Result_std__shared_ptr_Promise_std__string___ create_Result_std__shared_ptr_Promise_std__string___(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<std::string>>>::withError(error);
   }
   
   // pragma MARK: Result<std::shared_ptr<Promise<EncryptFileResult>>>
   using Result_std__shared_ptr_Promise_EncryptFileResult___ = Result<std::shared_ptr<Promise<EncryptFileResult>>>;
-  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::shared_ptr<Promise<EncryptFileResult>>& value) {
+  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::shared_ptr<Promise<EncryptFileResult>>& value) noexcept {
     return Result<std::shared_ptr<Promise<EncryptFileResult>>>::withValue(value);
   }
-  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::exception_ptr& error) {
+  inline Result_std__shared_ptr_Promise_EncryptFileResult___ create_Result_std__shared_ptr_Promise_EncryptFileResult___(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<EncryptFileResult>>>::withError(error);
   }
 

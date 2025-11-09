@@ -47,7 +47,11 @@ namespace margelo::nitro::nitroaes {
      */
     [[maybe_unused]]
     static jni::local_ref<JEncryptFileResult::javaobject> fromCpp(const EncryptFileResult& value) {
-      return newInstance(
+      using JSignature = JEncryptFileResult(jni::alias_ref<jni::JString>, double);
+      static const auto clazz = javaClassStatic();
+      static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
+      return create(
+        clazz,
         jni::make_jstring(value.auth),
         value.paddingSize
       );
